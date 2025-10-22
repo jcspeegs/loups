@@ -1,11 +1,33 @@
 import logging
 from collections import namedtuple
+from datetime import timedelta
 
 import cv2 as cv
 
 FrameBatterInfo = namedtuple(
-    "FrameBatterInfo", "ms, match_score, is_batter, new_batter"
+    "FrameBatterInfo", "ms, match_score, is_batter, new_batter, batter_name"
 )
+
+
+class MilliSecond(float):
+    def __str__(self):
+        return self.yt_format()
+
+    def yt_format(self) -> str:
+        td = timedelta(milliseconds=self)
+
+        hours = td / timedelta(hours=1)
+        minutes = td / timedelta(minutes=1)
+        seconds = td.seconds
+
+        return f"{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}"
+
+
+class BatterInfo(list):
+    def __str__(self):
+        return "\n".join(
+            [" ".join([str(frame.ms), frame.batter_name]) for frame in self]
+        )
 
 
 class Loups:
@@ -110,24 +132,28 @@ class Loups:
 
     def is_batter(self, frame) -> tuple[float, bool]:
         """Returns True if a new batter is up"""
+
         cfg = {
             "image": cv.cvtColor(frame, cv.COLOR_BGR2GRAY),
             "templ": self.template,
             "method": self.method_attribute_index(),
         }
-        self.logger.debug(f"{cfg=}")
+        # self.logger.debug(f"{cfg=}")
+
         match = cv.matchTemplate(**cfg)
         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(match)
+
         match self.method_optimal_func:
             case "max":
                 score = max_val
-                is_new_batter = max_val >= self.threshold
+                is_batter_graphic = max_val >= self.threshold
             case "min":
                 score = min_val
-                is_new_batter = min_val <= self.threshold
-        return score, is_new_batter
+                is_batter_graphic = min_val <= self.threshold
 
-    def new_batter(self, res, ms, is_batter, threshold: int = 2000):
+        return score, is_batter_graphic
+
+    def new_batter(self, res, ms, is_batter, threshold: int = 2000) -> bool:
         prev_frame_is_batter = self.prev_frame_is_batter(res)
         new_batter_frame = is_batter and not prev_frame_is_batter
 
@@ -159,52 +185,61 @@ class Loups:
             prev_frame_is_batter = False
         return prev_frame_is_batter
 
+    @staticmethod
+    def batter_name() -> str:
+        return "batter"
+
     def scan(self):
         """Create a collection of images"""
         frame_count = 0
 
-        res = []
+        frames = []
         while True:
             ret = self.capture.grab()
 
             if not ret:
-                return self
+                break
 
             frame_count += 1
+            self.logger.debug(f"{frame_count=}")
             frame_frequency = self.frame_frequency()
             keep_frame = frame_count % frame_frequency == 0
+            self.logger.debug(f"{keep_frame=}")
             if keep_frame:
                 ret, frame = self.capture.retrieve()
 
-                ms = self.timestamp()
+                ms = MilliSecond(self.timestamp())
                 match_score, is_batter = self.is_batter(frame)
-                new_batter = self.new_batter(res, ms, is_batter)
+                new_batter = self.new_batter(frames, ms, is_batter)
+                new_batter_name = self.batter_name() if new_batter else None
 
                 frame_batter_info = FrameBatterInfo(
                     ms=ms,
                     match_score=match_score,
                     is_batter=is_batter,
                     new_batter=new_batter,
+                    batter_name=new_batter_name,
                 )
-                res.append(frame_batter_info)
+                self.logger.debug(f"{frame_batter_info=}")
+                frames.append(frame_batter_info)
 
-            self.batters = res
+        self.batters = BatterInfo([frame for frame in frames if frame.new_batter])
+        self.logger.info(f"{self.batters=}")
+        self.batter_count = len(self.batters)
+        self.logger.info(f"{self.batter_count=}")
+        return self
 
 
 def main():
-    TEMPLATE = "data/banner.png"
-    VIDEO = "data/lbvibe2.mp4"
-    VIDEO = "data/emerald1.mp4"
+    TEMPLATE = "data/template2.png"
+    TEMPLATE = "data/template_solid.png"
     VIDEO = "data/lightsout_20251012_ruffrydaz12u.mp4"
+    VIDEO = "data/emerald1.mp4"
+    VIDEO = "data/lbvibe2.mp4"
 
-    # logging.basicConfig(level=logging.DEBUG)
-    game = Loups(VIDEO, TEMPLATE)
-    game = game.scan()
-    # print([f for f in game.batters if f.ms > 5000])
-    # print([f for f in game.batters if f.ms > 24257 and f.ms < 32199])
-    print([f for f in game.batters if f.new_batter])
-    # print(game.batters)
-    print(max([ms.match_score for ms in game.batters]))
+    logging.basicConfig(level=logging.INFO)
+    game = Loups(VIDEO, TEMPLATE).scan()
+    print(game.batters)
 
 
 if __name__ == "__main__":
