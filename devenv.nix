@@ -1,6 +1,15 @@
 # https://devenv.sh/reference/options/
 { pkgs, lib, config, inputs, ... }:
 
+let flake8-with-plugins = pkgs.python3.withPackages (ps: with ps; [
+  flake8
+  flake8-bugbear
+  flake8-docstrings
+  pep8-naming
+  flake8-quotes
+]);
+
+in
 {
   # https://devenv.sh/binary-caching/
   cachix.enable = true;
@@ -13,6 +22,7 @@
 
   # https://devenv.sh/packages/
   packages = with pkgs; [
+    flake8-with-plugins
     git
     nix-ld
     zlib
