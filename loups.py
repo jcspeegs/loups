@@ -1,3 +1,12 @@
+"""
+Scan a Lights Out HB fastpitch game video and extract information.
+
+Game information currently extracted:
+  * Timestamps of each Lights Out HB batter
+  * Total number of Lights Out HB batters
+  * ...
+"""
+
 import logging
 from collections import namedtuple
 from datetime import timedelta
@@ -5,15 +14,20 @@ from datetime import timedelta
 import cv2 as cv
 
 FrameBatterInfo = namedtuple(
-    "FrameBatterInfo", "ms, match_score, is_batter, new_batter, batter_name"
+    "FrameBatterInfo",
+    "ms, match_score, is_batter, new_batter, batter_name",
 )
 
 
 class MilliSecond(float):
+    """Provide a custom millisecond formatter to define YouTube chapters."""
+
     def __str__(self):
+        """Override the Float.__str__ to follow YouTube chapter formatting."""
         return self.yt_format()
 
     def yt_format(self) -> str:
+        """Format milliseconds as hh:mm:ss as used in YouTube chapter markers."""
         td = timedelta(milliseconds=self)
 
         hours = td / timedelta(hours=1)
@@ -24,14 +38,17 @@ class MilliSecond(float):
 
 
 class BatterInfo(list):
+    """A collection of FrameBatterInfo objects."""
+
     def __str__(self):
+        """Display BatterInfo as needed to create YouTube video chapters."""
         return "\n".join(
             [" ".join([str(frame.ms), frame.batter_name]) for frame in self]
         )
 
 
 class Loups:
-    """Extract the video timestamp when each batter is up"""
+    """Extract batter information from Lights Out HB fastpitch videos."""
 
     METHOD_DEFAULT = {"TM_CCOEFF_NORMED": {"threshold": 0.43, "optimal_func": "max"}}
 
@@ -43,7 +60,8 @@ class Loups:
         threshold=None,
         resolution=3,
     ):
-        """
+        """Loups object constructor.
+
         Parameters
             template: image used to identify a new batter
             video: video file to parse.  Optional if testing a single image
@@ -58,7 +76,6 @@ class Loups:
             game[14] # At-bat information for the 15th frame of video
             game.n # Number of batters in game
         """
-
         self.logger = logging.getLogger(__name__)
         self._scannable = scannable
         self._capture = self.create_capture()
@@ -71,6 +88,7 @@ class Loups:
 
     @property
     def method(self):
+        """Gets the method used for template matching."""
         return self._method
 
     @property
@@ -190,7 +208,6 @@ class Loups:
         return "batter"
 
     def scan(self):
-        """Create a collection of images"""
         frame_count = 0
 
         frames = []
