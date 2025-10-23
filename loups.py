@@ -1,22 +1,57 @@
+"""
+Scan a Lights Out HB fastpitch game video and extract information.
+
+Game information currently extracted:
+  * Timestamps of each Lights Out HB batter
+  * Total number of Lights Out HB batters
+  * ...
+"""
+
 import logging
-from collections import namedtuple
+from collections import UserDict, namedtuple
 from datetime import timedelta
 
 import cv2 as cv
 
 Point = namedtuple("Point", "x, y")
 Size = namedtuple("Size", "height, width")
+MatchDefault = namedtuple("MatchDefault", "threshold, optimal_function")
 MatchConfig = namedtuple("MatchConfig", "image, templ, method")
 FrameBatterInfo = namedtuple(
-    "FrameBatterInfo", "ms, match_score, is_batter, new_batter, batter_name"
+    "FrameBatterInfo",
+    "ms, match_score, is_batter, new_batter, batter_name",
 )
 
 
+class MethodDefault(UserDict):
+    """A custom dictionary of MatchTemplate methods and MatchDefault objects."""
+
+    def __setitem__(self, key, value):
+        """Values must be MatchDefault objects."""
+        methods = [
+            "TM_SQDIFF",
+            "TM_SQDIFF_NORMED",
+            "TM_CCORR",
+            "TM_CCORR_NORMED",
+            "TM_CCOEFF",
+            "TM_CCOEFF_NORMED",
+        ]
+        if not (isinstance(key, str) and key in methods):
+            raise TypeError(f"Keys must be one of the strings: {methods}")
+        if not isinstance(value, MatchDefault):
+            raise TypeError("Values must be a MatchDefault object.")
+        super().__setitem__(key, value)
+
+
 class MilliSecond(float):
+    """Provide a custom millisecond formatter to define YouTube chapters."""
+
     def __str__(self):
+        """Override the Float.__str__ to follow YouTube chapter formatting."""
         return self.yt_format()
 
     def yt_format(self) -> str:
+        """Format milliseconds as hh:mm:ss as used in YouTube chapter markers."""
         td = timedelta(milliseconds=self)
 
         hours = td / timedelta(hours=1)
@@ -27,17 +62,24 @@ class MilliSecond(float):
 
 
 class BatterInfo(list):
+    """A collection of FrameBatterInfo objects."""
+
     def __str__(self):
+        """Display BatterInfo as needed to create YouTube video chapters."""
         return "\n".join(
             [" ".join([str(frame.ms), frame.batter_name]) for frame in self]
         )
 
 
 class Loups:
-    """Extract the video timestamp when each batter is up"""
+    """Extract batter information from Lights Out HB fastpitch videos."""
 
     logger = logging.getLogger(__name__)
-    METHOD_DEFAULT = {"TM_CCOEFF_NORMED": {"threshold": 0.43, "optimal_func": "max"}}
+    METHOD_DEFAULT = MethodDefault(
+        {
+            "TM_CCOEFF_NORMED": MatchDefault(threshold=0.43, optimal_function="max"),
+        }
+    )
 
     def __init__(
         self,
@@ -47,7 +89,8 @@ class Loups:
         threshold=None,
         resolution=3,
     ):
-        """
+        """Loups object constructor.
+
         Parameters
             template: image used to identify a new batter
             video: video file to parse.  Optional if testing a single image
@@ -62,38 +105,51 @@ class Loups:
             game[14] # At-bat information for the 15th frame of video
             game.n # Number of batters in game
         """
-
         self._scannable = scannable
         self._capture = self.create_capture()
         self._frame_rate = self.get_frame_rate()
         self.template = template
         self._method = method
-        self.threshold = self.get_threshold(threshold)
+        self._method_default = Loups.METHOD_DEFAULT.get(self.method)
+        self.threshold = (
+            threshold if threshold is not None else self.method_default.threshold
+        )
         self._method_optimal_func = self.get_method_optimal_func()
         self.resolution = resolution
 
     @property
     def method(self):
+        """Returns the method used for template matching."""
         return self._method
 
     @property
+    def method_default(self):
+        """Returns the defaults for self.method."""
+        return self._method_default
+
+    @property
     def scannable(self):
+        """Returns the file to be scanned."""
         return self._scannable
 
     @property
     def capture(self):
+        """Returns cv.VideoCapture of scannable."""
         return self._capture
 
     @property
     def frame_rate(self):
+        """Returns the frame_rate of scannable."""
         return self._frame_rate
 
     @property
     def method_optimal_func(self):
+        """Returns the function (min/max) to find the optimum match method result."""
         return self._method_optimal_func
 
     @property
     def template(self):
+        """Returns an image as a numpy ndarray."""
         return self._template
 
     @template.setter
@@ -101,41 +157,41 @@ class Loups:
         self._template = cv.imread(value, cv.IMREAD_GRAYSCALE)
 
     def get_method_optimal_func(self):
-        mof = self.METHOD_DEFAULT.get(self.method).get("optimal_func")
+        """Get the function used to determine the opimal match template result."""
+        # mof = self.METHOD_DEFAULT.get(self.method).get("optimal_func")
+        mof = self.method_default.optimal_function
         valid = ["min", "max"]
         assert mof in valid, f"optimal_func must be: min or max.  {mof=} is not valid."
         return mof
 
-    def get_threshold(self, value):
-        return (
-            value
-            if value is not None
-            else self.METHOD_DEFAULT.get(self.method).get("threshold")
-        )
-
     def create_capture(self) -> cv.VideoCapture:
+        """Return the cv.VideoCapture of self.scannable."""
         return cv.VideoCapture(self.scannable)
 
     def get_frame_rate(self) -> float:
-        """return frame rate of scannable
+        """Return frame rate of scannable.
+
         https://docs.opencv.org/4.x/d4/d15/group__videoio__flags__base.html#gaeb8dd9c89c10a5c63c139bf7c4f5704d
         """
         return self.capture.get(5)
 
     def frame_frequency(self) -> int:
-        """Specifies how many frames to skip before processing a new frame"""
+        """Get the number of frames to skip before processing a new frame."""
         return int(self.frame_rate / self.resolution)
 
     def timestamp(self):
-        """Returns timestamp of video frame in ms"""
+        """Get the timestamp of video frame in ms."""
         return self.capture.get(0)
 
     def method_attribute_index(self) -> int:
+        """Get the index used to access a given match template method attribute."""
         return getattr(cv, self.method)
 
     def is_batter(self, frame) -> tuple[float, bool]:
-        """Returns True if a new batter is up"""
+        """Determine if a frame contains an upcoming batter.
 
+        Returns a tuple of the form (confidence score, boolean)
+        """
         cfg = MatchConfig(
             image=cv.cvtColor(frame, cv.COLOR_BGR2GRAY),
             templ=self.template,
@@ -167,6 +223,7 @@ class Loups:
         return score, is_batter
 
     def new_batter(self, res, ms, is_batter, threshold: int = 2000) -> bool:
+        """Determine if a frame conatins a new batter."""
         prev_frame_is_batter = self.prev_frame_is_batter(res)
         new_batter_frame = is_batter and not prev_frame_is_batter
 
@@ -183,7 +240,7 @@ class Loups:
         )
 
     def prev_batter_frame_timestamp(self, res) -> int:
-        """Returns the timestamp in ms of the last frame which included a batter"""
+        """Get the timestamp in ms of the previous frame which included a batter."""
         try:
             ts = max(b.ms for b in res if b.is_batter)
         except ValueError:
@@ -192,6 +249,7 @@ class Loups:
 
     @staticmethod
     def prev_frame_is_batter(res: list) -> bool:
+        """Determine if the previous frame contained a batter."""
         try:
             prev_frame_is_batter = res[-1].is_batter
         except IndexError:
@@ -200,6 +258,7 @@ class Loups:
 
     @staticmethod
     def batter_name() -> str:
+        """Determine batter name."""
         return "batter"
 
     @staticmethod
@@ -225,7 +284,7 @@ class Loups:
         return is_match_in_quadrant
 
     def scan(self):
-        """Create a collection of images"""
+        """Scan a scannable for a template."""
         frame_count = 0
 
         frames = []
