@@ -63,7 +63,6 @@ class Loups:
             game.n # Number of batters in game
         """
 
-        # self.logger = logging.getLogger(__name__)
         self._scannable = scannable
         self._capture = self.create_capture()
         self._frame_rate = self.get_frame_rate()
@@ -145,6 +144,7 @@ class Loups:
         self.logger.debug(f"{cfg=}")
 
         match = cv.matchTemplate(**cfg._asdict())
+        self.logger.debug(f"{type(match)}")
         self.logger.debug(f"{match=}")
         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(match)
 
@@ -263,19 +263,3 @@ class Loups:
         self.batter_count = len(self.batters)
         self.logger.info(f"{self.batter_count=}")
         return self
-
-
-def main():
-    TEMPLATE = "data/template2.png"
-    TEMPLATE = "data/template_solid.png"
-    VIDEO = "data/lightsout_20251012_ruffrydaz12u.mp4"
-    VIDEO = "data/lbvibe2.mp4"
-    VIDEO = "data/emerald1.mp4"
-
-    logging.basicConfig(level=logging.DEBUG)
-    game = Loups(VIDEO, TEMPLATE).scan()
-    print(game.batters)
-
-
-if __name__ == "__main__":
-    main()
