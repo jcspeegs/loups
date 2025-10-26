@@ -4,6 +4,9 @@ from datetime import timedelta
 
 import cv2 as cv
 
+Point = namedtuple("Point", "x, y")
+Size = namedtuple("Size", "height, width")
+MatchConfig = namedtuple("MatchConfig", "image, templ, method")
 FrameBatterInfo = namedtuple(
     "FrameBatterInfo", "ms, match_score, is_batter, new_batter, batter_name"
 )
@@ -33,6 +36,7 @@ class BatterInfo(list):
 class Loups:
     """Extract the video timestamp when each batter is up"""
 
+    logger = logging.getLogger(__name__)
     METHOD_DEFAULT = {"TM_CCOEFF_NORMED": {"threshold": 0.43, "optimal_func": "max"}}
 
     def __init__(
@@ -59,7 +63,7 @@ class Loups:
             game.n # Number of batters in game
         """
 
-        self.logger = logging.getLogger(__name__)
+        # self.logger = logging.getLogger(__name__)
         self._scannable = scannable
         self._capture = self.create_capture()
         self._frame_rate = self.get_frame_rate()
@@ -133,25 +137,34 @@ class Loups:
     def is_batter(self, frame) -> tuple[float, bool]:
         """Returns True if a new batter is up"""
 
-        cfg = {
-            "image": cv.cvtColor(frame, cv.COLOR_BGR2GRAY),
-            "templ": self.template,
-            "method": self.method_attribute_index(),
-        }
-        # self.logger.debug(f"{cfg=}")
+        cfg = MatchConfig(
+            image=cv.cvtColor(frame, cv.COLOR_BGR2GRAY),
+            templ=self.template,
+            method=self.method_attribute_index(),
+        )
+        self.logger.debug(f"{cfg=}")
 
-        match = cv.matchTemplate(**cfg)
+        match = cv.matchTemplate(**cfg._asdict())
+        self.logger.debug(f"{match=}")
         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(match)
 
         match self.method_optimal_func:
             case "max":
                 score = max_val
                 is_batter_graphic = max_val >= self.threshold
+                match_top_left = Point(*max_loc)
             case "min":
                 score = min_val
                 is_batter_graphic = min_val <= self.threshold
+                match_top_left = Point(*min_loc)
 
-        return score, is_batter_graphic
+        in_bottom_left_quadrant = self.match_in_quadrant(match_top_left, cfg)
+        self.logger.debug(f"{in_bottom_left_quadrant=}")
+
+        is_batter = is_batter_graphic and in_bottom_left_quadrant
+        self.logger.debug(f"{is_batter=}")
+
+        return score, is_batter
 
     def new_batter(self, res, ms, is_batter, threshold: int = 2000) -> bool:
         prev_frame_is_batter = self.prev_frame_is_batter(res)
@@ -188,6 +201,28 @@ class Loups:
     @staticmethod
     def batter_name() -> str:
         return "batter"
+
+    @staticmethod
+    def match_in_quadrant(match_top_left: Point, match_config: MatchConfig) -> bool:
+        """Test if match is in the bottom left quadrant of image."""
+        graphic_size = Size(*match_config.templ.shape)
+        Loups.logger.debug(f"{graphic_size=}")
+
+        Loups.logger.debug(f"{match_top_left=}")
+        match_bottom_left = Point(
+            match_top_left.x, match_top_left.y + graphic_size.height
+        )
+        Loups.logger.debug(f"{match_bottom_left=}")
+
+        image_size = Size(*match_config.image.shape)
+        Loups.logger.debug(f"{image_size=}")
+
+        is_match_in_quadrant = (match_bottom_left.x < 0.5 * image_size.width) and (
+            match_bottom_left.y > 0.5 * image_size.height
+        )
+        Loups.logger.debug(f"{is_match_in_quadrant=}")
+
+        return is_match_in_quadrant
 
     def scan(self):
         """Create a collection of images"""
@@ -234,10 +269,10 @@ def main():
     TEMPLATE = "data/template2.png"
     TEMPLATE = "data/template_solid.png"
     VIDEO = "data/lightsout_20251012_ruffrydaz12u.mp4"
-    VIDEO = "data/emerald1.mp4"
     VIDEO = "data/lbvibe2.mp4"
+    VIDEO = "data/emerald1.mp4"
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     game = Loups(VIDEO, TEMPLATE).scan()
     print(game.batters)
 
