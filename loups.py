@@ -8,7 +8,7 @@ Game information currently extracted:
 """
 
 import logging
-from collections import UserDict, namedtuple
+from collections import namedtuple
 from datetime import timedelta
 
 import cv2 as cv
@@ -21,26 +21,6 @@ FrameBatterInfo = namedtuple(
     "FrameBatterInfo",
     "ms, match_score, is_batter, new_batter, batter_name",
 )
-
-
-class MethodDefault(UserDict):
-    """A custom dictionary of MatchTemplate methods and MatchDefault objects."""
-
-    def __setitem__(self, key, value):
-        """Values must be MatchDefault objects."""
-        methods = [
-            "TM_SQDIFF",
-            "TM_SQDIFF_NORMED",
-            "TM_CCORR",
-            "TM_CCORR_NORMED",
-            "TM_CCOEFF",
-            "TM_CCOEFF_NORMED",
-        ]
-        if not (isinstance(key, str) and key in methods):
-            raise TypeError(f"Keys must be one of the strings: {methods}")
-        if not isinstance(value, MatchDefault):
-            raise TypeError("Values must be a MatchDefault object.")
-        super().__setitem__(key, value)
 
 
 class MilliSecond(float):
@@ -75,11 +55,9 @@ class Loups:
     """Extract batter information from Lights Out HB fastpitch videos."""
 
     logger = logging.getLogger(__name__)
-    METHOD_DEFAULT = MethodDefault(
-        {
-            "TM_CCOEFF_NORMED": MatchDefault(threshold=0.43, optimal_function="max"),
-        }
-    )
+    METHOD_DEFAULT = {
+        "TM_CCOEFF_NORMED": MatchDefault(threshold=0.43, optimal_function="max"),
+    }
 
     def __init__(
         self,
@@ -158,7 +136,6 @@ class Loups:
 
     def get_method_optimal_func(self):
         """Get the function used to determine the opimal match template result."""
-        # mof = self.METHOD_DEFAULT.get(self.method).get("optimal_func")
         mof = self.method_default.optimal_function
         valid = ["min", "max"]
         assert mof in valid, f"optimal_func must be: min or max.  {mof=} is not valid."
@@ -200,7 +177,6 @@ class Loups:
         self.logger.debug(f"{cfg=}")
 
         match = cv.matchTemplate(**cfg._asdict())
-        self.logger.debug(f"{type(match)}")
         self.logger.debug(f"{match=}")
         min_val, max_val, min_loc, max_loc = cv.minMaxLoc(match)
 
