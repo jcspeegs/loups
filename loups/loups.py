@@ -27,6 +27,14 @@ FrameBatterInfo = namedtuple(
 class MilliSecond(float):
     """Provide a custom millisecond formatter to define YouTube chapters."""
 
+    def __new__(cls, value):
+        """Restrict MilliSecond objects to non-negative numbers."""
+        if value < 0:
+            raise ValueError(
+                f"MilliSecond cannot be {value}, " "it must be a non-negative number."
+            )
+        return super().__new__(cls, value)
+
     def __str__(self):
         """Override the Float.__str__ to follow YouTube chapter formatting."""
         return self.yt_format()
