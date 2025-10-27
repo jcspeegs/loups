@@ -23,6 +23,7 @@ FrameBatterInfo = namedtuple(
 )
 
 
+# TODO: Restrict to >= 0
 class MilliSecond(float):
     """Provide a custom millisecond formatter to define YouTube chapters."""
 
@@ -34,9 +35,9 @@ class MilliSecond(float):
         """Format milliseconds as hh:mm:ss as used in YouTube chapter markers."""
         td = timedelta(milliseconds=self)
 
-        hours = td / timedelta(hours=1)
-        minutes = td / timedelta(minutes=1)
-        seconds = td.seconds
+        hours = td // timedelta(hours=1)
+        minutes = td // timedelta(minutes=1) % 60
+        seconds = td.seconds % 60
 
         return f"{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}"
 

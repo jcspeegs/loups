@@ -7,6 +7,8 @@ let flake8-with-plugins = pkgs.python3.withPackages (ps: with ps; [
   flake8-docstrings
   pep8-naming
   flake8-quotes
+  mccabe
+  pytest
 ]);
 
 in
