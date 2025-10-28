@@ -1,7 +1,7 @@
 # https://devenv.sh/reference/options/
 { pkgs, lib, config, inputs, ... }:
 
-let flake8-with-plugins = pkgs.python3.withPackages (ps: with ps; [
+let python-with-flake8-plugins = pkgs.python3.withPackages (ps: with ps; [
   flake8
   flake8-bugbear
   flake8-docstrings
@@ -24,7 +24,7 @@ in
 
   # https://devenv.sh/packages/
   packages = with pkgs; [
-    flake8-with-plugins
+    python-with-flake8-plugins
     git
     nix-ld
     zlib
@@ -76,6 +76,14 @@ in
     black.enable = true;
     flake8.enable = true;
     isort.enable = true;
+
+    unit-tests ={
+      enable = true;
+      name = "pyTestFTW";
+      entry = "uv run python -m pytest";
+      # language = "system";
+      pass_filenames = false;
+    };
   };
 
   # See full reference at https://devenv.sh/reference/options/
