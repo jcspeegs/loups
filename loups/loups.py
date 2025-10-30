@@ -316,12 +316,25 @@ class Loups:
             prev_frame_is_batter = False
         return not prev_frame_is_batter
 
-    def batter_name(self, match_top_left) -> str:
+    def batter_name(self, match_top_left: Point, threshold: float = 0.2) -> str:
         """Determine batter name."""
-        logger.debug(f"{match_top_left=}")
-        result = Loups.reader.readtext(self.frame)
-        logger.debug(f"{result=}")
-        return "batter"
+        template_size = Size(*self.template.shape)
+
+        match_bottom_right = Point(
+            match_top_left.x + template_size.width,
+            match_top_left.y + template_size.height,
+        )
+
+        image_to_scan = self.frame[
+            match_top_left.y : match_bottom_right.y,
+            match_top_left.x : match_bottom_right.x,
+        ]
+
+        ocr = Loups.reader.readtext(image_to_scan)
+        logger.debug(f"{ocr=}")
+        text = [text for location, text, score in ocr if score > threshold]
+        logger.debug(f"{text=}")
+        return " ".join(text)
 
     # def preprocess_frame(self):
     # self.logger.debug(f"{frame.shape[:2]=}")
