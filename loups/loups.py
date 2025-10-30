@@ -10,20 +10,20 @@ Game information currently extracted:
 import logging
 from collections import namedtuple
 from datetime import timedelta
+from functools import cached_property
+from typing import Literal, NamedTuple, Union
 
 import cv2 as cv
+import easyocr
+import numpy as np
+
+logger = logging.getLogger(__name__)
 
 Point = namedtuple("Point", "x, y")
 Size = namedtuple("Size", "height, width")
-MatchDefault = namedtuple("MatchDefault", "threshold, optimal_function")
 MatchConfig = namedtuple("MatchConfig", "image, templ, method")
-FrameBatterInfo = namedtuple(
-    "FrameBatterInfo",
-    "ms, match_score, is_batter, new_batter, batter_name",
-)
 
 
-# TODO: Restrict to >= 0
 class MilliSecond(float):
     """Provide a custom millisecond formatter to define YouTube chapters."""
 
@@ -50,6 +50,131 @@ class MilliSecond(float):
         return f"{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}"
 
 
+class FrameBatterInfo(NamedTuple):
+    """Holds batter information for a frame of a video."""
+
+    ms: MilliSecond
+    match_score: float
+    is_batter: bool
+    new_batter: bool
+    batter_name: str
+
+
+class MatchDefault(NamedTuple):
+    """Holds default match method configuration parameters."""
+
+    threshold: float
+    optimal_function: Union[Literal["min"], Literal["max"]]
+
+
+class MatchTemplateResult(NamedTuple):
+    """Hold the results of matchTemplate scans."""
+
+    is_match: bool
+    score: float
+    top_left_point: Point
+
+
+class MatchTemplateScan:
+    """Scan an image for the existence of a template."""
+
+    def __init__(self, image: np.ndarray, template: np.ndarray, method: str):
+        """Initialize a new instance of MatchTemplateScan.
+
+        Parameters
+            image: A video frame or image after being read by cv.VideoCapture
+            template: An image to search for in self.image
+            method: The match method to use in your search
+                    (https://docs.opencv.org/4.x/df/dfb/group__imgproc__object.html#ga3a7850640f1fe1f58fe91a2d7583695d)
+        """
+        self.image = image
+        self.template = template
+        self.method = method
+
+    @property
+    def method_default(self) -> dict[str, MatchDefault]:
+        """Match template method default config options."""
+        return {
+            "TM_SQDIFF": MatchDefault(threshold=None, optimal_function="min"),
+            "TM_SQDIFF_NORMED": MatchDefault(threshold=None, optimal_function="min"),
+            "TM_CCORR": MatchDefault(threshold=None, optimal_function="max"),
+            "TM_CCORR_NORMED": MatchDefault(threshold=None, optimal_function="max"),
+            "TM_CCOEFF": MatchDefault(threshold=None, optimal_function="max"),
+            "TM_CCOEFF_NORMED": MatchDefault(threshold=0.43, optimal_function="max"),
+        }
+
+    @property
+    def method_attr(self) -> int:
+        """Convert a match template method name to its index integer."""
+        return getattr(cv, self.method)
+
+    @property
+    def cfg(self) -> MatchConfig:
+        """Return a match template config object."""
+        return MatchConfig(
+            image=self.image, templ=self.template, method=self.method_attr
+        )
+
+    @cached_property
+    def match(self) -> cv.matchTemplate:
+        """Scan an image for a template image."""
+        return cv.matchTemplate(**self.cfg._asdict())
+
+    @property
+    def result(self) -> MatchTemplateResult:
+        """Return the relevant matchTemplate score and location."""
+        meets_threshold, score, top_left_loc = self.parse_match_result()
+
+        in_quadrant = self.match_quadrant(top_left_loc)
+
+        is_match = meets_threshold and in_quadrant
+        logger.debug(f"{is_match=}")
+
+        return MatchTemplateResult(is_match, score, top_left_loc)
+
+    def match_quadrant(self, match_top_left) -> bool:
+        """Determine if a match is found in the bottom left quadrant."""
+        template_size = Size(*self.template.shape)
+        logger.debug(f"{template_size=}")
+
+        match_bottom_left = Point(
+            match_top_left.x, match_top_left.y + template_size.height
+        )
+        logger.debug(f"{match_bottom_left=}")
+
+        image_size = Size(*self.image.shape)
+        logger.debug(f"{image_size=}")
+
+        is_bottom_left_quadrant = (match_bottom_left.x < 0.5 * image_size.width) and (
+            match_bottom_left.y > 0.5 * image_size.height
+        )
+        logger.debug(f"{is_bottom_left_quadrant=}")
+
+        return is_bottom_left_quadrant
+
+    def parse_match_result(self) -> tuple[bool, float, Point]:
+        """Interpret match result.
+
+        Depending on the matchTemplate method used, we either want to work with the min
+        or max return score and return location.
+        """
+        default = self.method_default.get(self.method)
+        logger.debug(f"{default=}")
+        min_val, max_val, min_loc, max_loc = cv.minMaxLoc(self.match)
+
+        match default.optimal_function:
+            case "max":
+                score = max_val
+                is_match = max_val >= default.threshold
+                top_left_loc = Point(*max_loc)
+            case "min":
+                score = min_val
+                is_match = min_val <= default.threshold
+                top_left_loc = Point(*min_loc)
+
+        return is_match, score, top_left_loc
+
+
 class BatterInfo(list):
     """A collection of FrameBatterInfo objects."""
 
@@ -63,10 +188,7 @@ class BatterInfo(list):
 class Loups:
     """Extract batter information from Lights Out HB fastpitch videos."""
 
-    logger = logging.getLogger(__name__)
-    METHOD_DEFAULT = {
-        "TM_CCOEFF_NORMED": MatchDefault(threshold=0.43, optimal_function="max"),
-    }
+    reader = easyocr.Reader(["en"])
 
     def __init__(
         self,
@@ -97,22 +219,13 @@ class Loups:
         self._frame_rate = self.get_frame_rate()
         self.template = template
         self._method = method
-        self._method_default = Loups.METHOD_DEFAULT.get(self.method)
-        self.threshold = (
-            threshold if threshold is not None else self.method_default.threshold
-        )
-        self._method_optimal_func = self.get_method_optimal_func()
         self.resolution = resolution
+        self.search_quadrant = "bottomleft"
 
     @property
     def method(self):
         """Returns the method used for template matching."""
         return self._method
-
-    @property
-    def method_default(self):
-        """Returns the defaults for self.method."""
-        return self._method_default
 
     @property
     def scannable(self):
@@ -130,11 +243,6 @@ class Loups:
         return self._frame_rate
 
     @property
-    def method_optimal_func(self):
-        """Returns the function (min/max) to find the optimum match method result."""
-        return self._method_optimal_func
-
-    @property
     def template(self):
         """Returns an image as a numpy ndarray."""
         return self._template
@@ -142,13 +250,6 @@ class Loups:
     @template.setter
     def template(self, value):
         self._template = cv.imread(value, cv.IMREAD_GRAYSCALE)
-
-    def get_method_optimal_func(self):
-        """Get the function used to determine the opimal match template result."""
-        mof = self.method_default.optimal_function
-        valid = ["min", "max"]
-        assert mof in valid, f"optimal_func must be: min or max.  {mof=} is not valid."
-        return mof
 
     def create_capture(self) -> cv.VideoCapture:
         """Return the cv.VideoCapture of self.scannable."""
@@ -169,48 +270,22 @@ class Loups:
         """Get the timestamp of video frame in ms."""
         return self.capture.get(0)
 
-    def method_attribute_index(self) -> int:
-        """Get the index used to access a given match template method attribute."""
-        return getattr(cv, self.method)
-
-    def is_batter(self, frame) -> tuple[float, bool]:
-        """Determine if a frame contains an upcoming batter.
-
-        Returns a tuple of the form (confidence score, boolean)
-        """
-        cfg = MatchConfig(
-            image=cv.cvtColor(frame, cv.COLOR_BGR2GRAY),
-            templ=self.template,
-            method=self.method_attribute_index(),
+    def match_template_scan(self) -> MatchTemplateResult:
+        """Search for self.template in an image."""
+        scan = MatchTemplateScan(
+            image=cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY),
+            template=self.template,
+            method=self.method,
         )
-        self.logger.debug(f"{cfg=}")
+        return scan
 
-        match = cv.matchTemplate(**cfg._asdict())
-        self.logger.debug(f"{match=}")
-        min_val, max_val, min_loc, max_loc = cv.minMaxLoc(match)
+    def new_batter(self, res, ms, threshold: int = 2000) -> bool:
+        """Determine if a frame conatins a new batter.
 
-        match self.method_optimal_func:
-            case "max":
-                score = max_val
-                is_batter_graphic = max_val >= self.threshold
-                match_top_left = Point(*max_loc)
-            case "min":
-                score = min_val
-                is_batter_graphic = min_val <= self.threshold
-                match_top_left = Point(*min_loc)
-
-        in_bottom_left_quadrant = self.match_in_quadrant(match_top_left, cfg)
-        self.logger.debug(f"{in_bottom_left_quadrant=}")
-
-        is_batter = is_batter_graphic and in_bottom_left_quadrant
-        self.logger.debug(f"{is_batter=}")
-
-        return score, is_batter
-
-    def new_batter(self, res, ms, is_batter, threshold: int = 2000) -> bool:
-        """Determine if a frame conatins a new batter."""
-        prev_frame_is_batter = self.prev_frame_is_batter(res)
-        new_batter_frame = is_batter and not prev_frame_is_batter
+        threshold is the time in ms that can elapse without triggering a new batter
+        """
+        new_batter_frame = self.prev_frame_is_not_batter(res)
+        logger.debug(f"{new_batter_frame=}")
 
         prev_batter_frame_timestamp = self.prev_batter_frame_timestamp(res)
         try:
@@ -224,54 +299,48 @@ class Loups:
             else new_batter_frame
         )
 
-    def prev_batter_frame_timestamp(self, res) -> int:
+    def prev_batter_frame_timestamp(self, frames) -> int:
         """Get the timestamp in ms of the previous frame which included a batter."""
         try:
-            ts = max(b.ms for b in res if b.is_batter)
+            ts = max(frame.ms for frame in frames if frame.is_batter)
         except ValueError:
             ts = None
         return ts
 
     @staticmethod
-    def prev_frame_is_batter(res: list) -> bool:
+    def prev_frame_is_not_batter(res: list) -> bool:
         """Determine if the previous frame contained a batter."""
         try:
             prev_frame_is_batter = res[-1].is_batter
         except IndexError:
             prev_frame_is_batter = False
-        return prev_frame_is_batter
+        return not prev_frame_is_batter
 
-    @staticmethod
-    def batter_name() -> str:
+    def batter_name(self, match_top_left) -> str:
         """Determine batter name."""
+        logger.debug(f"{match_top_left=}")
+        result = Loups.reader.readtext(self.frame)
+        logger.debug(f"{result=}")
         return "batter"
 
-    @staticmethod
-    def match_in_quadrant(match_top_left: Point, match_config: MatchConfig) -> bool:
-        """Test if match is in the bottom left quadrant of image."""
-        graphic_size = Size(*match_config.templ.shape)
-        Loups.logger.debug(f"{graphic_size=}")
-
-        Loups.logger.debug(f"{match_top_left=}")
-        match_bottom_left = Point(
-            match_top_left.x, match_top_left.y + graphic_size.height
-        )
-        Loups.logger.debug(f"{match_bottom_left=}")
-
-        image_size = Size(*match_config.image.shape)
-        Loups.logger.debug(f"{image_size=}")
-
-        is_match_in_quadrant = (match_bottom_left.x < 0.5 * image_size.width) and (
-            match_bottom_left.y > 0.5 * image_size.height
-        )
-        Loups.logger.debug(f"{is_match_in_quadrant=}")
-
-        return is_match_in_quadrant
+    # def preprocess_frame(self):
+    # self.logger.debug(f"{frame.shape[:2]=}")
+    # frame_size = Size(*frame.shape[:2])
+    # self.logger.debug(f"{frame_size=}")
+    # match self.search_quadrant:
+    #     case "bottomleft":
+    #         y = 0.5 * frame_size.height, frame_size.height
+    #         x = 0, frame_size.width
+    # self.logger.debug(f"{x=}")
+    # self.logger.debug(f"{y=}")
+    # # cropped_frame = frame[y_start:y_end, x_start:x_end]
+    # return self.frame
 
     def scan(self):
         """Scan a scannable for a template."""
         frame_count = 0
 
+        # Initalize a list to collect FrameBatterInfo objects
         frames = []
         while True:
             ret = self.capture.grab()
@@ -280,30 +349,39 @@ class Loups:
                 break
 
             frame_count += 1
-            self.logger.debug(f"{frame_count=}")
+            logger.debug(f"{frame_count=}")
             frame_frequency = self.frame_frequency()
             keep_frame = frame_count % frame_frequency == 0
-            self.logger.debug(f"{keep_frame=}")
-            if keep_frame:
-                ret, frame = self.capture.retrieve()
+            logger.debug(f"{keep_frame=}")
 
+            if keep_frame:
+                ret, self.frame = self.capture.retrieve()
+                # self.frame = self.preprocess_frame()
+
+                # Record timestamp of frame
                 ms = MilliSecond(self.timestamp())
-                match_score, is_batter = self.is_batter(frame)
-                new_batter = self.new_batter(frames, ms, is_batter)
-                new_batter_name = self.batter_name() if new_batter else None
+
+                # Search for template in frame
+                is_match, score, match_top_left = self.match_template_scan().result
+
+                # Does this frame contain a new batter
+                new_batter = self.new_batter(frames, ms) if is_match else False
+                new_batter_name = (
+                    self.batter_name(match_top_left) if new_batter else None
+                )
 
                 frame_batter_info = FrameBatterInfo(
                     ms=ms,
-                    match_score=match_score,
-                    is_batter=is_batter,
+                    match_score=score,
+                    is_batter=is_match,
                     new_batter=new_batter,
                     batter_name=new_batter_name,
                 )
-                self.logger.debug(f"{frame_batter_info=}")
+                logger.debug(f"{frame_batter_info=}")
                 frames.append(frame_batter_info)
 
         self.batters = BatterInfo([frame for frame in frames if frame.new_batter])
-        self.logger.info(f"{self.batters=}")
+        logger.info(f"{self.batters=}")
         self.batter_count = len(self.batters)
-        self.logger.info(f"{self.batter_count=}")
+        logger.info(f"{self.batter_count=}")
         return self

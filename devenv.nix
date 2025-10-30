@@ -79,9 +79,8 @@ in
 
     unit-tests ={
       enable = true;
-      name = "pyTestFTW";
+      name = "pyTest";
       entry = "uv run python -m pytest";
-      # language = "system";
       pass_filenames = false;
     };
   };

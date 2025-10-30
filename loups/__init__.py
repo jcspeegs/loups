@@ -1,5 +1,5 @@
 """loups module __init__ file."""
 
-import loups
+from .loups import Loups
 
-__all__ = ["loups"]
+__all__ = ["Loups"]

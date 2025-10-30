@@ -10,6 +10,6 @@ VIDEO = "data/emerald1.mp4"
 VIDEO = "data/lightsout_20251012_ruffrydaz12u.mp4"
 VIDEO = "data/lbvibe2.mp4"
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 game = Loups(VIDEO, TEMPLATE).scan()
 print(game.batters)
