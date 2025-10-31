@@ -41,9 +41,13 @@ class MilliSecond(float):
 
         hours = td // timedelta(hours=1)
         minutes = td // timedelta(minutes=1) % 60
-        seconds = td.seconds % 60
+        seconds = td // timedelta(seconds=1) % 60
 
-        return f"{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}"
+        return (
+            f"{minutes:02.0f}:{seconds:02.0f}"
+            if hours == 0
+            else f"{hours:02.0f}:{minutes:02.0f}:{seconds:02.0f}"
+        )
 
 
 class FrameBatterInfo(NamedTuple):
@@ -56,11 +60,43 @@ class FrameBatterInfo(NamedTuple):
     batter_name: str
 
 
-class BatterInfo(list):
+class BatterInfo(list[FrameBatterInfo]):
     """A collection of FrameBatterInfo objects."""
 
     def __str__(self):
-        """Display BatterInfo as needed to create YouTube video chapters."""
+        """Display BatterInfo."""
+        return self.display()
+
+    def display(self) -> str:
+        """Display BatterInfo as needed to create YouTube video chapters.
+
+        The first chapter must begin with timestamp 00:00 and chapters must be at least
+        10s.  If the first batter is up within the first 10s of the video then move the
+        timestamp back to 00:00.
+        """
+        # TODO: Must be at least 3 chapters
+        # TODO: If two batters up within < 10s then combine their names
+        logger.debug(f"{self[0]=}")
+
+        time_before_first_batter = timedelta(milliseconds=self[0].ms)
+        logger.debug(f"{time_before_first_batter=}")
+        need_intro_chapter = time_before_first_batter > timedelta(seconds=10)
+        logger.debug(f"{need_intro_chapter=}")
+
+        if need_intro_chapter is True:
+            intro_title = "Game Time"
+            intro_chapter = FrameBatterInfo(
+                ms=MilliSecond(0.0),
+                match_score=None,
+                is_batter=False,
+                new_batter=False,
+                batter_name=intro_title,
+            )
+            self.insert(0, intro_chapter)
+        elif need_intro_chapter is False:
+            self[0] = self[0]._replace(ms=MilliSecond(0.0))
+        logger.debug(f"{self[:1]=}")
+
         return "\n".join(
             [" ".join([str(frame.ms), frame.batter_name]) for frame in self]
         )
