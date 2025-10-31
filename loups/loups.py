@@ -242,9 +242,12 @@ class Loups:
             match_top_left.y + template_size.height,
         )
 
+        # Do not scan the template headshot
+        headshot = Size(width=215, height=None)
+
         image_to_scan = self.frame[
             match_top_left.y : match_bottom_right.y,
-            match_top_left.x : match_bottom_right.x,
+            match_top_left.x + headshot.width : match_bottom_right.x,
         ]
 
         ocr = Loups.reader.readtext(image_to_scan)
