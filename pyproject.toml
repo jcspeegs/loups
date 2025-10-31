@@ -11,3 +11,7 @@ dependencies = [
 
 [tool.black]
 line-length = 88
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "DEBUG"
