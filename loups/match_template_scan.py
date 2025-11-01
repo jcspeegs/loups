@@ -55,7 +55,7 @@ class MatchTemplateScan:
             "TM_CCORR": MatchDefault(threshold=None, optimal_function="max"),
             "TM_CCORR_NORMED": MatchDefault(threshold=None, optimal_function="max"),
             "TM_CCOEFF": MatchDefault(threshold=None, optimal_function="max"),
-            "TM_CCOEFF_NORMED": MatchDefault(threshold=0.43, optimal_function="max"),
+            "TM_CCOEFF_NORMED": MatchDefault(threshold=0.45, optimal_function="max"),
         }
 
     @property
