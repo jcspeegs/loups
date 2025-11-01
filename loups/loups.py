@@ -8,6 +8,7 @@ Game information currently extracted:
 """
 
 import logging
+import re
 from datetime import timedelta
 from typing import NamedTuple
 
@@ -269,13 +270,63 @@ class Loups:
         # Extract text
         ocr = Loups.reader.readtext(image_to_scan)
         logger.debug(f"{ocr=}")
-        text = [text for location, text, score in ocr if score > threshold]
 
-        # Ensure player number is after name
-        text = sorted(text, key=lambda item: "#" in item)
-        logger.debug(f"{text=}")
+        # Filter by confidence threshold
+        filtered_ocr = [
+            (location, text, score)
+            for location, text, score in ocr
+            if score > threshold
+        ]
 
-        return " ".join(text)
+        # Sort by x-coordinate (left-to-right) using the leftmost point
+        # OCR location can be:
+        # - [[top-left], [top-right], [bottom-right], [bottom-left]]
+        #   (list of points)
+        # - (x1, y1, x2, y2) (tuple of coordinates)
+        # For left-to-right reading, sort by x-coordinate of leftmost point
+        def get_leftmost_x(item):
+            location = item[0]
+            # Check if it's a list of points or a flat tuple
+            if isinstance(location[0], (list, tuple)) and len(location[0]) >= 2:
+                # List of points: [[x1, y1], [x2, y2], ...]
+                return min(point[0] for point in location)
+            else:
+                # Flat tuple: (x1, y1, x2, y2)
+                # x-coordinates are at even indices
+                return min(location[i] for i in range(0, len(location), 2))
+
+        sorted_ocr = sorted(filtered_ocr, key=get_leftmost_x)
+
+        # Extract just the text strings after sorting
+        text = [text for location, text, score in sorted_ocr]
+
+        # Extract jersey numbers and name parts from all elements
+        jersey_pattern = r"#\d+"
+
+        # Collect all jersey numbers from all text elements
+        # (now in left-to-right order)
+        all_jerseys = [
+            jersey for item in text for jersey in re.findall(jersey_pattern, item)
+        ]
+
+        # Collect all non-jersey text parts
+        # (remove jerseys, normalize spaces, preserve left-to-right order)
+        all_name_parts = [
+            re.sub(r"\s+", " ", re.sub(jersey_pattern, "", item).strip())
+            for item in text
+        ]
+
+        # Filter out empty strings
+        all_name_parts = [part for part in all_name_parts if part]
+
+        # Combine: name parts first (in left-to-right order), then jersey numbers
+        result = " ".join(all_name_parts + all_jerseys)
+        logger.debug(
+            f"text={text}, all_name_parts={all_name_parts}, "
+            f"all_jerseys={all_jerseys}, result={result}"
+        )
+
+        return result
 
     # def preprocess_frame(self):
     # self.logger.debug(f"{frame.shape[:2]=}")
