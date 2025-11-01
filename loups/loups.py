@@ -114,6 +114,8 @@ class Loups:
         method="TM_CCOEFF_NORMED",
         threshold=None,
         resolution=3,
+        on_batter_found=None,
+        on_progress=None,
     ):
         """Loups object constructor.
 
@@ -124,6 +126,13 @@ class Loups:
             TM_CCORR, TM_CCORR_NORMED, TM_CCOEFF, TM_CCOEFF_NORMED)
             threshold: threshold used to accept a match (differs by method)
             resolution: number of frames to analyze per second
+            on_batter_found: optional callback function called when a new
+                batter is found.
+                Signature: callback(batter_info: FrameBatterInfo) -> None
+            on_progress: optional callback function called on each frame
+                processed.
+                Signature: callback(frames_processed: int, total_frames: int)
+                -> None
 
         Examples:
             game = Loups(video) # Initialize game
@@ -138,6 +147,8 @@ class Loups:
         self._method = method
         self.resolution = resolution
         self.search_quadrant = "bottomleft"
+        self.on_batter_found = on_batter_found
+        self.on_progress = on_progress
 
     @property
     def method(self):
@@ -153,6 +164,11 @@ class Loups:
     def capture(self):
         """Returns cv.VideoCapture of scannable."""
         return self._capture
+
+    @property
+    def total_frames(self):
+        """Returns total frames in scannable."""
+        return self.capture.get(cv.CAP_PROP_FRAME_COUNT)
 
     @property
     def frame_rate(self):
@@ -317,6 +333,14 @@ class Loups:
                 )
                 logger.debug(f"{frame_batter_info=}")
                 frames.append(frame_batter_info)
+
+                # Call callback if a new batter was found
+                if new_batter and self.on_batter_found:
+                    self.on_batter_found(frame_batter_info)
+
+                # Call progress callback after processing each frame
+                if self.on_progress:
+                    self.on_progress(frame_count, int(self.total_frames))
 
         self.batters = BatterInfo([frame for frame in frames if frame.new_batter])
         logger.info(f"{self.batters=}")
