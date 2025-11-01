@@ -242,15 +242,23 @@ class Loups:
             match_top_left.y + template_size.height,
         )
 
+        # Do not scan the template headshot
+        headshot = Size(width=215, height=None)
+
         image_to_scan = self.frame[
             match_top_left.y : match_bottom_right.y,
-            match_top_left.x : match_bottom_right.x,
+            match_top_left.x + headshot.width : match_bottom_right.x,
         ]
 
+        # Extract text
         ocr = Loups.reader.readtext(image_to_scan)
         logger.debug(f"{ocr=}")
         text = [text for location, text, score in ocr if score > threshold]
+
+        # Ensure player number is after name
+        text = sorted(text, key=lambda item: "#" in item)
         logger.debug(f"{text=}")
+
         return " ".join(text)
 
     # def preprocess_frame(self):
