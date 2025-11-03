@@ -133,19 +133,17 @@ def main(
         "-t",
         help="Path to template image (defaults to bundled template)",
     ),
-    log: Optional[Path] = typer.Option(  # noqa: B008
+    log: Optional[str] = typer.Option(  # noqa: B008
         None,
         "--log",
         "-l",
+        is_flag=False,
+        flag_value="loups.log",
         help=(
-            "Path to log file (rotates at 5MB, keeps 3 backups, "
-            "defaults to loups.log). Mutually exclusive with --no-log."
+            "Enable logging. Use without argument for default 'loups.log', "
+            "or provide a path for custom location. "
+            "Logs rotate at 10MB, keeps 3 backups."
         ),
-    ),
-    no_log: bool = typer.Option(  # noqa: B008
-        False,
-        "--no-log",
-        help="Disable log file creation. Mutually exclusive with --log.",
     ),
     output: Optional[Path] = typer.Option(  # noqa: B008
         None,
@@ -167,21 +165,11 @@ def main(
     ),
 ) -> None:
     """Scan a Lights Out HB fastpitch game video and extract batter timestamps."""
-    # Validate mutually exclusive options
-    if log is not None and no_log:
-        err_console.print(
-            "[red]Error:[/red] --log and --no-log are mutually exclusive. "
-            "Use one or the other, not both."
-        )
-        raise typer.Exit(1)
-
     # Determine log path
-    if no_log:
-        log_path = None
-    elif log is not None:
-        log_path = log
+    if log is not None:
+        log_path = Path(log)
     else:
-        log_path = Path("./loups.log")
+        log_path = None
 
     # Set up logging
     setup_logging(log_path, quiet, debug)
