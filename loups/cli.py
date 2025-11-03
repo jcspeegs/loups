@@ -42,7 +42,9 @@ def get_default_template() -> Path:
         )
 
 
-def setup_logging(log_path: Optional[Path] = None, quiet: bool = False) -> None:
+def setup_logging(
+    log_path: Optional[Path] = None, quiet: bool = False, debug: bool = False
+) -> None:
     """Set up logging with rotation."""
     # Configure root logger
     root_logger = logging.getLogger()
@@ -52,10 +54,11 @@ def setup_logging(log_path: Optional[Path] = None, quiet: bool = False) -> None:
     if log_path is not None:
         file_handler = RotatingFileHandler(
             log_path,
-            maxBytes=5 * 1024 * 1024,  # 5MB
+            maxBytes=10 * 1024 * 1024,  # 10MB
             backupCount=3,
         )
-        file_handler.setLevel(logging.DEBUG)
+        # Set file log level based on debug flag
+        file_handler.setLevel(logging.DEBUG if debug else logging.INFO)
         file_formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
@@ -156,6 +159,12 @@ def main(
         "-q",
         help="Suppress stdout output (errors still go to stderr)",
     ),
+    debug: bool = typer.Option(  # noqa: B008
+        False,
+        "--debug",
+        "-d",
+        help="Enable DEBUG level logging to file (default is INFO)",
+    ),
 ) -> None:
     """Scan a Lights Out HB fastpitch game video and extract batter timestamps."""
     # Validate mutually exclusive options
@@ -175,7 +184,7 @@ def main(
         log_path = Path("./loups.log")
 
     # Set up logging
-    setup_logging(log_path, quiet)
+    setup_logging(log_path, quiet, debug)
 
     # Get template path
     if template is None:

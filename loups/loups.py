@@ -382,7 +382,7 @@ class Loups:
                     new_batter=new_batter,
                     batter_name=new_batter_name,
                 )
-                logger.debug(f"{frame_batter_info=}")
+                logger.info(f"{frame_batter_info=}")
                 frames.append(frame_batter_info)
 
                 # Call callback if a new batter was found
