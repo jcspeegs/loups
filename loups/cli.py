@@ -155,7 +155,7 @@ def main(
         False,
         "--quiet",
         "-q",
-        help="Suppress stdout output (errors still go to stderr)",
+        help="Suppress progress display and output (errors still go to stderr)",
     ),
     debug: bool = typer.Option(  # noqa: B008
         False,
@@ -173,6 +173,9 @@ def main(
 
     # Set up logging
     setup_logging(log_path, quiet, debug)
+
+    # Detect if stdout is being piped/redirected
+    is_piped = not sys.stdout.isatty()
 
     # Get template path
     if template is None:
@@ -218,8 +221,10 @@ def main(
         err_console.print(f"[red]Error:[/red] Failed to initialize scanner: {e}")
         raise typer.Exit(1)
 
-    # Run scan with progress display
-    if not quiet:
+    # Run scan with progress display (disabled when piped or quiet)
+    show_progress = not quiet and not is_piped
+
+    if show_progress:
         console.print(f"[bold]Scanning video:[/bold] {video}")
         console.print()
 
@@ -287,7 +292,7 @@ def main(
         )
         console.print()
     else:
-        # Quiet mode - just run the scan
+        # Quiet mode or piped output - just run the scan
         try:
             game.scan()
         except Exception as e:
@@ -299,14 +304,19 @@ def main(
 
     # Output to stdout (unless quiet)
     if not quiet:
-        console.print("[bold]YouTube Chapters:[/bold]")
-        console.print(results)
+        if is_piped:
+            # When piped, output plain text to stdout (no formatting)
+            print(results)
+        else:
+            # Interactive terminal: show formatted output
+            console.print("[bold]YouTube Chapters:[/bold]")
+            console.print(results)
 
     # Output to file if specified
     if output:
         try:
             output.write_text(results)
-            if not quiet:
+            if show_progress:
                 console.print()
                 console.print(f"✓ Results saved to: [cyan]{output}[/cyan]")
         except Exception as e:
