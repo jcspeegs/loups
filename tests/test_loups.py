@@ -137,6 +137,99 @@ class TestBatterName:
                 ],
                 "",
             ),
+            # Single text element with jersey at start (THE BUG CASE)
+            (
+                [
+                    ((0, 0, 200, 20), "#21 Lucy Del Toro", 0.89),
+                ],
+                "Lucy Del Toro #21",
+            ),
+            # Single text element with jersey in middle
+            (
+                [
+                    ((0, 0, 200, 20), "Lucy #21 Del Toro", 0.89),
+                ],
+                "Lucy Del Toro #21",
+            ),
+            # Single text element with jersey already at end (should stay same)
+            (
+                [
+                    ((0, 0, 200, 20), "Lucy Del Toro #21", 0.89),
+                ],
+                "Lucy Del Toro #21",
+            ),
+            # Multiple jerseys in single element
+            (
+                [
+                    ((0, 0, 200, 20), "#12 Jane #34 Doe", 0.89),
+                ],
+                "Jane Doe #12 #34",
+            ),
+            # Mixed: some elements with embedded jerseys, some separate
+            (
+                [
+                    ((0, 0, 100, 20), "#12 Jane", 0.95),
+                    ((100, 0, 150, 20), "Doe", 0.92),
+                    ((150, 0, 170, 20), "#34", 0.88),
+                ],
+                "Jane Doe #12 #34",
+            ),
+            # LEFT-TO-RIGHT ORDERING TESTS
+            # Case 1: Last name returned before first name (Garcia Lily bug)
+            (
+                [
+                    ([[116, 76], [270, 76], [270, 126], [116, 126]], "Garcia", 0.91),
+                    ([[31, 131], [83, 131], [83, 167], [31, 167]], "#9", 0.99),
+                    (
+                        [
+                            [29.8, 68.1],
+                            [121.4, 81.1],
+                            [111.2, 140.9],
+                            [19.6, 127.9],
+                        ],
+                        "Lily",
+                        0.99,
+                    ),
+                ],
+                "Lily Garcia #9",
+            ),
+            # Case 2: Simple reversed first/last name
+            (
+                [
+                    ((100, 0, 150, 20), "Smith", 0.95),
+                    ((10, 0, 60, 20), "John", 0.93),
+                    ((160, 0, 180, 20), "#42", 0.88),
+                ],
+                "John Smith #42",
+            ),
+            # Case 3: Three name parts out of order
+            (
+                [
+                    ((100, 0, 150, 20), "Middle", 0.95),
+                    ((0, 0, 50, 20), "First", 0.93),
+                    ((160, 0, 210, 20), "Last", 0.92),
+                    ((220, 0, 240, 20), "#7", 0.88),
+                ],
+                "First Middle Last #7",
+            ),
+            # Case 4: Jersey number positioned before name but returned after
+            (
+                [
+                    ((50, 0, 150, 20), "Jane Doe", 0.95),
+                    ((10, 0, 40, 20), "#15", 0.88),
+                ],
+                "Jane Doe #15",
+            ),
+            # Case 5: All elements in reverse order
+            (
+                [
+                    ((200, 0, 220, 20), "#33", 0.88),
+                    ((120, 0, 180, 20), "Last", 0.92),
+                    ((60, 0, 100, 20), "Middle", 0.93),
+                    ((0, 0, 50, 20), "First", 0.95),
+                ],
+                "First Middle Last #33",
+            ),
         ],
     )
     def test_batter_name_ensures_hash_at_end(self, ocr_results, expected_output):
@@ -144,9 +237,14 @@ class TestBatterName:
 
         This test mocks the EasyOCR reader to return controlled test data,
         then verifies that:
-        1. Items containing '#' are sorted to the end of the result
-        2. Confidence threshold filtering works correctly (default 0.2)
-        3. Results are joined with spaces
+        1. Text elements are sorted left-to-right by x-coordinate
+        2. Items containing '#' are moved to the end of the result
+        3. Confidence threshold filtering works correctly (default 0.2)
+        4. Results are joined with spaces
+
+        The left-to-right sorting ensures that names appear in the correct
+        order regardless of OCR's internal detection order (e.g., prevents
+        "Garcia Lily" when the screen shows "Lily Garcia").
         """
         with patch.object(loups.Loups, "reader") as mock_reader:
             # Configure the mock to return our test OCR results
