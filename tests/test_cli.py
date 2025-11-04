@@ -20,6 +20,7 @@ What we CAN test:
 - Flag combinations
 """
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -93,7 +94,7 @@ class TestPipeDetection:
     ):
         """Test that quiet mode suppresses all stdout regardless of TTY."""
         # Quiet mode should suppress output
-        result = runner.invoke(app, [str(test_video), "-q"])
+        result = runner.invoke(app, ["-q", str(test_video)])
         assert result.stdout == ""
 
     def test_piped_with_output_file_saves_silently(
@@ -103,7 +104,7 @@ class TestPipeDetection:
         output_file = tmp_path / "chapters.txt"
 
         with patch("loups.cli.sys.stdout.isatty", return_value=False):
-            result = runner.invoke(app, [str(test_video), "-o", str(output_file)])
+            result = runner.invoke(app, ["-o", str(output_file), str(test_video)])
 
         # Should NOT show save confirmation when piped
         assert "Results saved to:" not in result.stdout
@@ -120,7 +121,7 @@ class TestPipeDetection:
         """Test that --output file is created with correct chapter content."""
         output_file = tmp_path / "chapters.txt"
 
-        result = runner.invoke(app, [str(test_video), "-o", str(output_file)])
+        result = runner.invoke(app, ["-o", str(output_file), str(test_video)])
 
         # Should complete successfully
         assert result.exit_code == 0
@@ -226,7 +227,7 @@ class TestCombinedFlags:
         """Test --quiet with --output file."""
         output_file = tmp_path / "chapters.txt"
 
-        result = runner.invoke(app, [str(test_video), "-q", "-o", str(output_file)])
+        result = runner.invoke(app, ["-q", "-o", str(output_file), str(test_video)])
 
         # Quiet mode should suppress stdout
         assert result.stdout == ""
@@ -241,7 +242,7 @@ class TestCombinedFlags:
         log_file = tmp_path / "test.log"
 
         with patch("loups.cli.sys.stdout.isatty", return_value=False):
-            result = runner.invoke(app, [str(test_video), "--log", str(log_file)])
+            result = runner.invoke(app, ["--log", str(log_file), str(test_video)])
 
         # Should output chapters to stdout
         assert "0:00:00 Game Start" in result.stdout
@@ -257,7 +258,7 @@ class TestCombinedFlags:
 
         with patch("loups.cli.sys.stdout.isatty", return_value=False):
             result = runner.invoke(
-                app, [str(test_video), "--log", str(log_file), "--debug"]
+                app, ["--log", str(log_file), "--debug", str(test_video)]
             )
 
         # Should still output to stdout when piped
@@ -298,3 +299,217 @@ class TestRealWorldScenarios:
         lines = result.stdout.strip().split("\n")
         assert len(lines) > 0
         assert lines[0].startswith("0:")
+
+
+class TestThumbnailSubcommandLogging:
+    """Test thumbnail subcommand logging functionality."""
+
+    @pytest.fixture
+    def mock_thumbnail_extractor(self, tmp_path):
+        """Mock the extract_thumbnail function to return a successful result."""
+        from loups.thumbnail_extractor import ThumbnailResult
+
+        with patch("loups.cli.extract_thumbnail") as mock_extract:
+            # Create a mock successful result
+            result = ThumbnailResult(
+                success=True,
+                output_path=tmp_path / "thumbnail.jpg",
+                frame_number=10,
+                timestamp_ms=333.33,
+                ssim_score=0.95,
+            )
+            mock_extract.return_value = result
+            yield mock_extract
+
+    @pytest.fixture
+    def mock_setup_logging(self):
+        """Mock setup_logging to track that it was called with correct parameters."""
+        with patch("loups.cli.setup_logging") as mock_setup:
+            yield mock_setup
+
+    def test_thumbnail_log_flag_creates_log_file(
+        self, runner, test_video, mock_thumbnail_extractor, tmp_path
+    ):
+        """Test that --log flag creates a log file for thumbnail subcommand."""
+        log_file = tmp_path / "thumbnail.log"
+
+        result = runner.invoke(
+            app, [str(test_video), "thumbnail", "--log", str(log_file), "-q"]
+        )
+
+        # Command should succeed
+        assert result.exit_code == 0
+
+        # Log file should be created
+        assert log_file.exists()
+
+    def test_thumbnail_log_configures_logging_with_path(
+        self, runner, test_video, mock_thumbnail_extractor, mock_setup_logging, tmp_path
+    ):
+        """Test that --log flag configures logging with the correct path."""
+        log_file = tmp_path / "thumbnail_info.log"
+
+        result = runner.invoke(
+            app, [str(test_video), "thumbnail", "--log", str(log_file), "-q"]
+        )
+
+        assert result.exit_code == 0
+        # Verify setup_logging was called with the log path
+        mock_setup_logging.assert_called_once()
+        call_args = mock_setup_logging.call_args
+        assert call_args[0][0] == Path(log_file)  # log_path parameter
+        assert call_args[0][1] is True  # quiet parameter
+        assert call_args[0][2] is False  # debug parameter
+
+    def test_thumbnail_debug_enables_debug_in_setup_logging(
+        self, runner, test_video, mock_thumbnail_extractor, mock_setup_logging, tmp_path
+    ):
+        """Test that --debug flag enables debug in setup_logging."""
+        log_file = tmp_path / "thumbnail_debug.log"
+
+        result = runner.invoke(
+            app,
+            [str(test_video), "thumbnail", "--log", str(log_file), "--debug", "-q"],
+        )
+
+        assert result.exit_code == 0
+        # Verify setup_logging was called with debug=True
+        mock_setup_logging.assert_called_once()
+        call_args = mock_setup_logging.call_args
+        assert call_args[0][0] == Path(log_file)  # log_path parameter
+        assert call_args[0][1] is True  # quiet parameter
+        assert call_args[0][2] is True  # debug parameter (should be True!)
+
+    def test_thumbnail_log_and_debug_both_passed_to_setup(
+        self, runner, test_video, mock_thumbnail_extractor, mock_setup_logging, tmp_path
+    ):
+        """Test that --log and --debug are both passed to setup_logging."""
+        log_file = tmp_path / "combined.log"
+
+        result = runner.invoke(
+            app,
+            [str(test_video), "thumbnail", "--log", str(log_file), "--debug", "-q"],
+        )
+
+        assert result.exit_code == 0
+        # Verify both parameters are passed correctly
+        mock_setup_logging.assert_called_once()
+        call_args = mock_setup_logging.call_args
+        assert call_args[0][0] == Path(log_file)
+        assert call_args[0][2] is True  # debug=True
+
+    def test_thumbnail_log_without_debug_is_info_level(
+        self, runner, test_video, mock_thumbnail_extractor, tmp_path
+    ):
+        """Test that without --debug, logging defaults to INFO level."""
+        log_file = tmp_path / "info_only.log"
+
+        # Mock extract_thumbnail to trigger some logging
+        with patch("loups.cli.extract_thumbnail") as mock_extract:
+            from loups.thumbnail_extractor import ThumbnailResult
+
+            result_obj = ThumbnailResult(
+                success=True,
+                output_path=tmp_path / "thumb.jpg",
+                frame_number=5,
+                timestamp_ms=166.67,
+                ssim_score=0.92,
+            )
+            mock_extract.return_value = result_obj
+
+            result = runner.invoke(
+                app, [str(test_video), "thumbnail", "--log", str(log_file), "-q"]
+            )
+
+        assert result.exit_code == 0
+        assert log_file.exists()
+
+    def test_thumbnail_logging_called_when_log_flag_used(
+        self, runner, test_video, mock_thumbnail_extractor, mock_setup_logging, tmp_path
+    ):
+        """Test that setup_logging is called when --log flag is used."""
+        log_file = tmp_path / "test.log"
+        result = runner.invoke(
+            app, [str(test_video), "thumbnail", "--log", str(log_file), "-q"]
+        )
+
+        assert result.exit_code == 0
+        # Verify setup_logging was called
+        mock_setup_logging.assert_called_once()
+        # Verify it was called with a log path (not None)
+        call_args = mock_setup_logging.call_args
+        assert call_args[0][0] is not None  # log_path should not be None
+
+    def test_thumbnail_log_with_custom_path(
+        self, runner, test_video, mock_thumbnail_extractor, tmp_path
+    ):
+        """Test --log with custom path."""
+        custom_log = tmp_path / "custom" / "my_thumbnail.log"
+        custom_log.parent.mkdir(parents=True)
+
+        result = runner.invoke(
+            app, [str(test_video), "thumbnail", "--log", str(custom_log), "-q"]
+        )
+
+        assert result.exit_code == 0
+        assert custom_log.exists()
+
+    def test_thumbnail_logging_with_extraction_failure(
+        self, runner, test_video, tmp_path
+    ):
+        """Test that logging works even when thumbnail extraction fails."""
+        log_file = tmp_path / "error.log"
+
+        # Mock extract_thumbnail to return None (no match found)
+        with patch("loups.cli.extract_thumbnail") as mock_extract:
+            mock_extract.return_value = None
+
+            result = runner.invoke(
+                app, [str(test_video), "thumbnail", "--log", str(log_file), "-q"]
+            )
+
+        # Should exit with error code (fatal for standalone command)
+        assert result.exit_code != 0
+
+        # Log file should still be created
+        assert log_file.exists()
+
+    def test_thumbnail_logging_with_exception(self, runner, test_video, tmp_path):
+        """Test that logging captures exceptions during thumbnail extraction."""
+        log_file = tmp_path / "exception.log"
+
+        # Mock extract_thumbnail to raise an exception
+        with patch("loups.cli.extract_thumbnail") as mock_extract:
+            mock_extract.side_effect = Exception("Test extraction failure")
+
+            result = runner.invoke(
+                app, [str(test_video), "thumbnail", "--log", str(log_file), "-q"]
+            )
+
+        # Should exit with error
+        assert result.exit_code != 0
+
+        # Log file should be created
+        assert log_file.exists()
+
+    def test_thumbnail_quiet_suppresses_output_not_logging(
+        self, runner, test_video, mock_thumbnail_extractor, mock_setup_logging, tmp_path
+    ):
+        """Test that --quiet suppresses stdout but setup_logging is still called."""
+        log_file = tmp_path / "quiet_test.log"
+
+        result = runner.invoke(
+            app,
+            [str(test_video), "thumbnail", "--log", str(log_file), "--debug", "-q"],
+        )
+
+        assert result.exit_code == 0
+
+        # Stdout should be empty (quiet mode)
+        assert result.stdout == ""
+
+        # But setup_logging should still have been called
+        mock_setup_logging.assert_called_once()
+        call_args = mock_setup_logging.call_args
+        assert call_args[0][1] is True  # quiet=True
+        assert call_args[0][2] is True  # debug=True

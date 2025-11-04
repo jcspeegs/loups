@@ -15,7 +15,7 @@ from typing import NamedTuple
 import cv2 as cv
 import easyocr
 
-from .common_components import Point, Size
+from .geometry import Point, Size
 from .match_template_scan import MatchTemplateResult, MatchTemplateScan
 
 logger = logging.getLogger(__name__)
@@ -198,7 +198,9 @@ class Loups:
 
     def frame_frequency(self) -> int:
         """Get the number of frames to skip before processing a new frame."""
-        return int(self.frame_rate / self.resolution)
+        from .frame_utils import calculate_frame_frequency
+
+        return calculate_frame_frequency(self.frame_rate, self.resolution)
 
     def timestamp(self):
         """Get the timestamp of video frame in ms."""
