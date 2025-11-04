@@ -1,4 +1,4 @@
-"""Shared classes used accross the package."""
+"""Geometric types for spatial operations on images and frames."""
 
 from collections import namedtuple
 

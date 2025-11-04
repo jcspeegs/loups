@@ -36,21 +36,64 @@ pip install loups
 loups game_video.mp4
 
 # 🎨 For any other video (use your own template)
-loups video.mp4 -t my_template.png
+loups -t my_template.png video.mp4
 
 # 💾 Save results to a file for YouTube chapters
-loups video.mp4 -o chapters.txt
+loups -o chapters.txt video.mp4
 
 # 🤫 Quiet mode for automation/batch processing
-loups video.mp4 -q -o chapters.txt
+loups -q -o chapters.txt video.mp4
 ```
+
+**Important:** Options must be specified *before* the video argument.
+
+## 🖼️ Thumbnail Extraction
+
+Loups can automatically extract thumbnails from your videos using SSIM (Structural Similarity Index) matching!
+
+```bash
+# Extract thumbnail using default template
+loups video.mp4 thumbnail
+
+# Use custom thumbnail template
+loups video.mp4 thumbnail --thumbnail-template my_thumb_template.png
+
+# Customize output location
+loups video.mp4 thumbnail --thumbnail-output ./thumbnails/game_thumb.jpg
+
+# Fine-tune the matching
+loups video.mp4 thumbnail --thumbnail-threshold 0.85 --thumbnail-scan-duration 180
+
+# Extract thumbnail during chapter scanning (options BEFORE video)
+loups --extract-thumbnail --thumbnail-output thumb.jpg video.mp4
+```
+
+### How Thumbnail Extraction Works
+
+1. **🎯 Template Matching** - Scans video frames from the beginning using SSIM scoring
+2. **⚡ First-Match Strategy** - Stops as soon as a frame exceeds the similarity threshold
+3. **💾 Automatic Saving** - Saves the matched frame as a JPEG thumbnail
+4. **⏱️ Configurable Duration** - Only scans the first N seconds (default: 120s)
+
+**Key Features:**
+- 🎯 **SSIM-based matching** - More accurate than simple template matching
+- ⚡ **Efficient scanning** - Stops at first match, doesn't scan entire video
+- 🎨 **Default template support** - Include `thumbnail_template.png` in package data
+- 🔧 **Highly configurable** - Control threshold, scan duration, and frame sampling
+
+**Options:**
+- `--thumbnail-template` - Path to template image (uses default if not specified)
+- `--thumbnail-output` - Where to save thumbnail (default: `<video>-thumbnail.jpg` in current directory)
+- `--thumbnail-threshold` - Minimum SSIM score (0.0-1.0, default: 0.35)
+- `--thumbnail-scan-duration` - Max seconds to scan from start (default: 120)
+- `--thumbnail-frames-per-second` - Frame sampling rate (default: 3)
 
 ## 📋 Common Workflows
 
 ### 📹 Creating YouTube Chapters
 ```bash
 # Scan video and save chapters for YouTube description
-loups my_video.mp4 -o youtube_chapters.txt
+loups -o youtube_chapters.txt my_video.mp4
 # Copy the contents of youtube_chapters.txt to your video description!
 ```
 
@@ -60,35 +103,57 @@ loups my_video.mp4 -o youtube_chapters.txt
 # (Screenshot the text/overlay you want to detect)
 
 # Step 2: Use your template
-loups video.mp4 -t my_custom_template.png -o chapters.txt
+loups -t my_custom_template.png -o chapters.txt video.mp4
 ```
 
 ### 🔧 Troubleshooting with Logs
 ```bash
 # Enable logging to debug detection issues
-loups video.mp4 --log
+loups --log video.mp4
 
 # Use custom log location with debug level
-loups video.mp4 --log /path/to/debug.log --debug
+loups --log /path/to/debug.log --debug video.mp4
 ```
 
 ### 🤖 Automation & Batch Processing
 ```bash
 # Process multiple videos quietly
-loups video1.mp4 -q -o video1_chapters.txt
-loups video2.mp4 -q -o video2_chapters.txt
-loups video3.mp4 -q -o video3_chapters.txt
+loups -q -o video1_chapters.txt video1.mp4
+loups -q -o video2_chapters.txt video2.mp4
+loups -q -o video3_chapters.txt video3.mp4
+```
+
+### 🖼️ Creating Thumbnails for YouTube
+```bash
+# Extract thumbnail with chapters in one command
+loups -o chapters.txt --extract-thumbnail --thumbnail-output thumbnail.jpg game_video.mp4
+
+# Or extract thumbnail separately
+loups game_video.mp4 thumbnail --thumbnail-template title_screen.png
+
+# Batch thumbnail extraction
+loups video1.mp4 thumbnail --thumbnail-output vid1_thumb.jpg
+loups video2.mp4 thumbnail --thumbnail-output vid2_thumb.jpg
+loups video3.mp4 thumbnail --thumbnail-output vid3_thumb.jpg
 ```
 
 ## ⚙️ CLI Options
 
-### Required Arguments
+**Command Structure:**
+- Default scanning: `loups [OPTIONS] VIDEO` - Options must come BEFORE the video path
+- Thumbnail extraction: `loups VIDEO thumbnail [OPTIONS]` - Thumbnail options come AFTER the subcommand
+
+### Main Command: `loups [OPTIONS] VIDEO`
+
+Scan video for chapters (batter at-bats or any detected frames).
+
+**Required Arguments:**
 
 | Argument | Description |
 |----------|-------------|
-| `VIDEO` | 🎥 Path to the video file to scan |
+| `VIDEO` | 🎥 Path to the video file to scan (must come AFTER options) |
 
-### Optional Flags
+**Optional Flags:**
 
 | Flag | Short | Description |
 |------|-------|-------------|
@@ -97,6 +162,33 @@ loups video3.mp4 -q -o video3_chapters.txt
 | `--log [PATH]` | `-l` | 📝 Enable logging (defaults to `loups.log`, or specify custom path)<br>• Rotates at 10MB<br>• Keeps 3 backup files |
 | `--quiet` | `-q` | 🤫 Suppress progress display (errors still shown) |
 | `--debug` | `-d` | 🔍 Enable DEBUG level logging (requires `--log`) |
+| `--extract-thumbnail` | | 🖼️ Extract thumbnail during chapter scan |
+| `--thumbnail-template PATH` | | 🎨 Path to thumbnail template (optional) |
+| `--thumbnail-output PATH` | | 💾 Thumbnail save location (default: `<video>-thumbnail.jpg`) |
+| `--thumbnail-threshold FLOAT` | | 🎯 SSIM threshold 0.0-1.0 (default: 0.35) |
+| `--thumbnail-scan-duration INT` | | ⏱️ Max seconds to scan for thumbnail (default: 120) |
+| `--thumbnail-frames-per-second INT` | | 📊 Frame sampling rate (default: 3) |
+
+### Thumbnail Command: `loups VIDEO thumbnail [OPTIONS]`
+
+Extract thumbnail from video using SSIM-based template matching.
+
+**Required Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `VIDEO` | 🎥 Path to the video file (comes BEFORE the `thumbnail` subcommand) |
+
+**Optional Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--thumbnail-template PATH` | 🎨 Path to thumbnail template (defaults to bundled template) |
+| `--thumbnail-output PATH` | 💾 Output path (default: `<video>-thumbnail.jpg` in cwd) |
+| `--thumbnail-threshold FLOAT` | 🎯 Minimum SSIM score 0.0-1.0 (default: 0.35) |
+| `--thumbnail-scan-duration INT` | ⏱️ Max seconds to scan from start (default: 120) |
+| `--thumbnail-frames-per-second INT` | 📊 Frame sampling rate (default: 3) |
+| `--quiet` | 🤫 Suppress output |
 
 ## ⭐ Features
 
@@ -105,8 +197,9 @@ loups video3.mp4 -q -o video3_chapters.txt
 - 🔍 **Template Matching** - Detects specific frames using image templates
 - 📝 **OCR Text Extraction** - Reads text from matched frames to create chapter titles
 - 📺 **YouTube-Ready Output** - Generates properly formatted chapter timestamps
+- 🖼️ **Thumbnail Extraction** - SSIM-based automatic thumbnail extraction
 - 🎨 **Universal Custom Templates** - Works with ANY video content
-- 🏆 **Bundled Template** - Ready to use with Lights Out HB fastpitch games
+- 🏆 **Bundled Templates** - Ready to use with Lights Out HB fastpitch games
 
 ### 🛠️ Technical Features
 - 📝 **Optional Logging** - File logging with automatic rotation (10MB, 3 backups)
@@ -152,7 +245,7 @@ Loups works with any video - just provide a template!
 1. **Find a clear frame** - Pause your video where the text/overlay is visible
 2. **Take a screenshot** - Capture the region you want to detect
 3. **Crop the template** - Include the area where text appears
-4. **Use it** - `loups video.mp4 -t my_template.png`
+4. **Use it** - `loups -t my_template.png video.mp4`
 
 **Tips for good templates:**
 - ✅ Clear, high-contrast text

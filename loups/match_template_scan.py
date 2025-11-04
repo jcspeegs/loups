@@ -8,7 +8,7 @@ from typing import Literal, NamedTuple, Union
 import cv2 as cv
 import numpy as np
 
-from .common_components import Point, Size
+from .geometry import Point, Size
 
 logger = logging.getLogger(__name__)
 

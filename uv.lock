@@ -108,6 +108,7 @@ dependencies = [
     { name = "easyocr" },
     { name = "opencv-python-headless" },
     { name = "rich" },
+    { name = "scikit-image" },
     { name = "typer" },
 ]
 
@@ -116,6 +117,7 @@ requires-dist = [
     { name = "easyocr", specifier = ">=1.7.2" },
     { name = "opencv-python-headless", specifier = ">=4.12.0.88" },
     { name = "rich", specifier = ">=13.0.0" },
+    { name = "scikit-image", specifier = ">=0.25.2" },
     { name = "typer", specifier = ">=0.12.0" },
 ]
 
