@@ -9,6 +9,7 @@ let python-with-flake8-plugins = pkgs.python3.withPackages (ps: with ps; [
   flake8-quotes
   mccabe
   pytest
+  pytest-cov
 ]);
 
 in

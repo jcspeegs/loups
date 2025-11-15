@@ -10,4 +10,5 @@ devenv.local.yaml
 .pre-commit-config.yaml
 
 data/
+plans/
 *.log*
