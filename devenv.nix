@@ -9,6 +9,7 @@ let python-with-flake8-plugins = pkgs.python3.withPackages (ps: with ps; [
   flake8-quotes
   mccabe
   pytest
+  pytest-cov
 ]);
 
 in
@@ -80,7 +81,7 @@ in
     unit-tests ={
       enable = true;
       name = "pyTest";
-      entry = "uv run python -m pytest";
+      entry = "devenv shell uv run python -m pytest";
       pass_filenames = false;
     };
   };

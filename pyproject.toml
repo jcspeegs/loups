@@ -27,8 +27,12 @@ profile = "black"
 line_length = 88
 
 [tool.pytest.ini_options]
-log_cli = true
+log_cli = false
 # log_cli_level = "DEBUG"
+addopts = [
+    "--cov=loups",
+    "--cov-fail-under=50",
+]
 
 [tool.setuptools.package-data]
 loups = ["data/*.png"]

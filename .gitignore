@@ -9,5 +9,6 @@ devenv.local.yaml
 # pre-commit
 .pre-commit-config.yaml
 
-data/
+/data/
+plans/
 *.log*
