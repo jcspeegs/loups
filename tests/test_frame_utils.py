@@ -1,6 +1,11 @@
 """Tests for frame_utils module."""
 
+from pathlib import Path
+from unittest.mock import Mock, patch
+
 from loups.frame_utils import calculate_frame_frequency
+from loups.loups import Loups
+from loups.thumbnail_extractor import ThumbnailExtractor
 
 
 class TestCalculateFrameFrequency:
@@ -77,58 +82,54 @@ class TestCalculateFrameFrequency:
 class TestFrameUtilsIntegration:
     """Test frame_utils integration with Loups and ThumbnailExtractor."""
 
-    def test_loups_uses_shared_utility(self):
-        """Test that Loups class uses the shared frame_utils."""
-        from unittest.mock import Mock, patch
+    def test_loups_uses_shared_utility(
+        self, mock_video_capture_30fps, mock_imread, standard_resolution
+    ):
+        """Test that Loups class uses the shared frame_utils.
 
-        from loups.loups import Loups
+        Verifies that Loups.frame_frequency() correctly delegates to
+        the shared calculate_frame_frequency utility with 30fps video
+        and resolution=3, expecting every 10th frame to be sampled.
+        """
+        # Create Loups instance with mocked video and template
+        loups_instance = Loups(
+            scannable="dummy.mp4", template="dummy.png", resolution=standard_resolution
+        )
 
-        # Mock VideoCapture to avoid needing real video file
-        with patch("cv2.VideoCapture") as mock_vc:
-            mock_capture = Mock()
-            mock_capture.get.return_value = 30.0  # 30 fps
-            mock_vc.return_value = mock_capture
+        # Should use shared utility: 30 fps / 3 resolution = 10
+        expected_frequency = 10
+        actual_frequency = loups_instance.frame_frequency()
+        assert actual_frequency == expected_frequency, (
+            f"Expected frame_frequency of {expected_frequency} "
+            f"for 30fps @ resolution={standard_resolution}, got {actual_frequency}"
+        )
 
-            # Mock imread for template
-            with patch("cv2.imread") as mock_imread:
-                mock_imread.return_value = Mock()
+    def test_thumbnail_extractor_uses_shared_utility(
+        self, mock_template_image, standard_resolution
+    ):
+        """Test that ThumbnailExtractor uses the shared frame_utils.
 
-                # Create Loups instance with resolution=3
-                loups_instance = Loups(
-                    scannable="dummy.mp4",
-                    template="dummy.png",
-                    resolution=3,
-                )
-
-                # Should use shared utility: 30 / 3 = 10
-                assert loups_instance.frame_frequency() == 10
-
-    def test_thumbnail_extractor_uses_shared_utility(self, tmp_path):
-        """Test that ThumbnailExtractor uses the shared frame_utils."""
-        from pathlib import Path
-        from unittest.mock import Mock, patch
-
-        import cv2 as cv
-        import numpy as np
-
-        from loups.thumbnail_extractor import ThumbnailExtractor
-
-        # Create a real template file
-        template_path = tmp_path / "template.png"
-        template_img = np.zeros((100, 100, 3), dtype=np.uint8)
-        cv.imwrite(str(template_path), template_img)
-
+        Verifies that ThumbnailExtractor.frame_frequency() correctly delegates
+        to the shared calculate_frame_frequency utility with 30fps video
+        and resolution=3, expecting every 10th frame to be sampled.
+        """
+        # Mock VideoCapture for ThumbnailExtractor
         with patch("loups.thumbnail_extractor.cv.VideoCapture") as mock_vc:
             mock_capture = Mock()
-            mock_capture.get.return_value = 30.0  # 30 fps
+            mock_capture.get.return_value = 30.0
             mock_vc.return_value = mock_capture
 
-            # Create ThumbnailExtractor with resolution=3
+            # Create ThumbnailExtractor with mocked video and real template
             extractor = ThumbnailExtractor(
                 video_path=Path("dummy.mp4"),
-                template_path=template_path,
-                resolution=3,
+                template_path=mock_template_image,
+                resolution=standard_resolution,
             )
 
-            # Should use shared utility: 30 / 3 = 10
-            assert extractor.frame_frequency() == 10
+            # Should use shared utility: 30 fps / 3 resolution = 10
+            expected_frequency = 10
+            actual_frequency = extractor.frame_frequency()
+            assert actual_frequency == expected_frequency, (
+                f"Expected frame_frequency of {expected_frequency} "
+                f"for 30fps @ resolution={standard_resolution}, got {actual_frequency}"
+            )
