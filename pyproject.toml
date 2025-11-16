@@ -31,7 +31,7 @@ log_cli = false
 # log_cli_level = "DEBUG"
 addopts = [
     "--cov=loups",
-    "--cov-fail-under=50",
+    "--cov-fail-under=60",
 ]
 
 [tool.setuptools.package-data]
