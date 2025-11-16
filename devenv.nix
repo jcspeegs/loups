@@ -81,7 +81,7 @@ in
     unit-tests ={
       enable = true;
       name = "pyTest";
-      entry = "uv run python -m pytest";
+      entry = "devenv shell uv run python -m pytest";
       pass_filenames = false;
     };
   };
