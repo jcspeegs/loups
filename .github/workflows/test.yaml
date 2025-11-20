@@ -20,7 +20,7 @@ jobs:
       # - name: Install devenv.sh
       #   run: nix profile install nixpkgs#devenv
       - name: Build nix environment
-        uses: .github/actions/build-nix-environment
+        uses: .github/actions
         with:
           github-access-token: ${{  secrets.ACCESS_PUBLIC_RO }}
       - name: Build shell and run git hooks
