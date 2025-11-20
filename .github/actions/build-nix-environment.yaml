@@ -1,0 +1,24 @@
+---
+name: 'Build nix Environment'
+description: 'Checkout your code, install nix, setup cache, install devenv.sh'
+
+inputs:
+  github-access-token:
+    description: 'Github access token to avoid rate limiting (ro)'
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
+      with:
+        github_access_token: ${{ inputs.github-access-token }}
+    - name: Setup read-only cache
+      uses: cachix/cachix-action@v16
+      with:
+        name: devenv
+    - name: Install devenv.sh
+      run: nix profile install nixpkgs#devenv
