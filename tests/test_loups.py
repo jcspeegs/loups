@@ -1,7 +1,7 @@
 """Loups pytest suite."""
 
 import logging
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
@@ -246,25 +246,26 @@ class TestBatterName:
         order regardless of OCR's internal detection order (e.g., prevents
         "Garcia Lily" when the screen shows "Lily Garcia").
         """
-        with patch.object(loups.Loups, "reader") as mock_reader:
-            # Configure the mock to return our test OCR results
-            mock_reader.readtext.return_value = ocr_results
+        # Create a mock Loups instance with required attributes
+        loups_instance = MagicMock(spec=["template", "frame", "get_reader"])
 
-            # Create a mock Loups instance with required attributes
-            loups_instance = MagicMock(spec=["template", "frame"])
+        # Mock the get_reader method to return a mock reader
+        mock_reader = MagicMock()
+        mock_reader.readtext.return_value = ocr_results
+        loups_instance.get_reader.return_value = mock_reader
 
-            # Mock the template as a 2D numpy array with shape (height, width)
-            # Size namedtuple expects exactly 2 values: (height, width)
-            loups_instance.template = np.zeros((100, 500), dtype=np.uint8)
+        # Mock the template as a 2D numpy array with shape (height, width)
+        # Size namedtuple expects exactly 2 values: (height, width)
+        loups_instance.template = np.zeros((100, 500), dtype=np.uint8)
 
-            # Mock the frame as a numpy array that supports slicing
-            # Make it large enough for any slice operation
-            loups_instance.frame = np.zeros((1000, 1000), dtype=np.uint8)
+        # Mock the frame as a numpy array that supports slicing
+        # Make it large enough for any slice operation
+        loups_instance.frame = np.zeros((1000, 1000), dtype=np.uint8)
 
-            # Call the actual batter_name method with our mocked instance
-            result = loups.Loups.batter_name(
-                loups_instance, match_top_left=loups.Point(0, 0), threshold=0.2
-            )
+        # Call the actual batter_name method with our mocked instance
+        result = loups.Loups.batter_name(
+            loups_instance, match_top_left=loups.Point(0, 0), threshold=0.2
+        )
 
-            # Verify the result matches expected output
-            assert result == expected_output
+        # Verify the result matches expected output
+        assert result == expected_output
