@@ -70,3 +70,112 @@ jobs:
         with:
           repository-url: https://test.pypi.org/legacy/
           verbose: true
+
+  validate-testpypi-package:
+    name: Validate TestPyPI Package
+    needs: publish-to-testpypi
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.13"]
+      fail-fast: false  # Continue testing other platforms even if one fails
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Wait for package availability
+        run: sleep 60
+        shell: bash
+
+      - name: Install from TestPyPI
+        run: |
+          pip install --index-url https://test.pypi.org/simple/ \
+                      --extra-index-url https://pypi.org/simple/ \
+                      loups
+        shell: bash
+
+      - name: Verify installation
+        run: |
+          pip show loups
+          python -c "import loups; print(f'Loups installed at: {loups.__file__}')"
+        shell: bash
+
+      - name: Test CLI accessibility
+        run: loups --help
+        shell: bash
+
+      - name: Verify package data
+        run: |
+          python -c "
+          from importlib.resources import files
+          import sys
+          data_path = files('loups').joinpath('data')
+          if not data_path.exists():
+              print('ERROR: Package data missing!')
+              sys.exit(1)
+          print(f'Package data found: {data_path}')
+          print('Contents:')
+          for item in data_path.iterdir():
+              print(f'  - {item.name}')
+          "
+        shell: bash
+
+      - name: Test dependency imports
+        run: |
+          python -c "
+          import sys
+
+          # Test each dependency can be imported
+          try:
+              import easyocr
+              print('✓ easyocr')
+          except ImportError as e:
+              print(f'✗ easyocr: {e}')
+              sys.exit(1)
+
+          try:
+              import cv2
+              print('✓ opencv-python-headless')
+          except ImportError as e:
+              print(f'✗ opencv: {e}')
+              sys.exit(1)
+
+          try:
+              import typer
+              print('✓ typer')
+          except ImportError as e:
+              print(f'✗ typer: {e}')
+              sys.exit(1)
+
+          try:
+              import rich
+              print('✓ rich')
+          except ImportError as e:
+              print(f'✗ rich: {e}')
+              sys.exit(1)
+
+          try:
+              from skimage import metrics
+              print('✓ scikit-image')
+          except ImportError as e:
+              print(f'✗ scikit-image: {e}')
+              sys.exit(1)
+
+          print('All dependencies successfully imported!')
+          "
+        shell: bash
+
+      - name: Test basic functionality
+        run: |
+          python -c "
+          from loups import Loups
+          from loups.cli import app
+          from loups.match_template_scan import MatchTemplateScan
+          print('Core modules and classes importable')
+          print(f'Loups class has scan method: {hasattr(Loups, \"scan\")}')
+          "
+        shell: bash
