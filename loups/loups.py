@@ -106,7 +106,7 @@ class BatterInfo(list[FrameBatterInfo]):
 class Loups:
     """Extract batter information from Lights Out HB fastpitch videos."""
 
-    reader = easyocr.Reader(["en"])
+    _reader = None
 
     def __init__(
         self,
@@ -184,6 +184,11 @@ class Loups:
     @template.setter
     def template(self, value):
         self._template = cv.imread(value, cv.IMREAD_GRAYSCALE)
+
+    @classmethod
+    def get_reader(cls):
+        """Lazy initialization of easyocr Reader."""
+        return easyocr.Reader(["en"]) if cls._reader is None else cls._reader
 
     def create_capture(self) -> cv.VideoCapture:
         """Return the cv.VideoCapture of self.scannable."""
@@ -270,7 +275,7 @@ class Loups:
         ]
 
         # Extract text
-        ocr = Loups.reader.readtext(image_to_scan)
+        ocr = self.get_reader().readtext(image_to_scan)
         logger.debug(f"{ocr=}")
 
         # Filter by confidence threshold

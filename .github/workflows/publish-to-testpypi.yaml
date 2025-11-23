@@ -1,0 +1,181 @@
+---
+name: Publish to TestPyPI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build nix environment
+        uses: ./.github/actions/build-nix-environment
+        with:
+          github-access-token: ${{  secrets.ACCESS_PUBLIC_RO }}
+
+      - name: Run tests
+        run: devenv test
+        working-directory: ${{ github.workspace }}
+
+  build:
+    name: Build Distribution
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+
+      - name: Install build dependencies
+        run: python -m pip install --upgrade pip build
+
+      - name: Build package
+        run: python -m build
+
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: loups-distributions
+          path: dist/
+          if-no-files-found: error
+
+  publish-to-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/project/loups/
+    permissions:
+      id-token: write
+
+    steps:
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v6
+        with:
+          name: loups-distributions
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          verbose: true
+
+  validate-testpypi-package:
+    name: Validate TestPyPI Package
+    needs: publish-to-testpypi
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.13"]
+      fail-fast: false  # Continue testing other platforms even if one fails
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Wait for package availability
+        run: sleep 60
+        shell: bash
+
+      - name: Install from TestPyPI
+        run: |
+          pip install --index-url https://test.pypi.org/simple/ \
+                      --extra-index-url https://pypi.org/simple/ \
+                      loups
+        shell: bash
+
+      - name: Verify installation
+        run: |
+          pip show loups
+          python -c "import loups; print(f'Loups installed at: {loups.__file__}')"
+        shell: bash
+
+      - name: Test CLI accessibility
+        run: loups --help
+        shell: bash
+
+      - name: Verify package data
+        run: |
+          python -c "
+          from importlib.resources import files
+          import sys
+          data_path = files('loups').joinpath('data')
+          if not data_path.exists():
+              print('ERROR: Package data missing!')
+              sys.exit(1)
+          print(f'Package data found: {data_path}')
+          print('Contents:')
+          for item in data_path.iterdir():
+              print(f'  - {item.name}')
+          "
+        shell: bash
+
+      - name: Test dependency imports
+        run: |
+          python -c "
+          import sys
+
+          # Test each dependency can be imported
+          try:
+              import easyocr
+              print('✓ easyocr')
+          except ImportError as e:
+              print(f'✗ easyocr: {e}')
+              sys.exit(1)
+
+          try:
+              import cv2
+              print('✓ opencv-python-headless')
+          except ImportError as e:
+              print(f'✗ opencv: {e}')
+              sys.exit(1)
+
+          try:
+              import typer
+              print('✓ typer')
+          except ImportError as e:
+              print(f'✗ typer: {e}')
+              sys.exit(1)
+
+          try:
+              import rich
+              print('✓ rich')
+          except ImportError as e:
+              print(f'✗ rich: {e}')
+              sys.exit(1)
+
+          try:
+              from skimage import metrics
+              print('✓ scikit-image')
+          except ImportError as e:
+              print(f'✗ scikit-image: {e}')
+              sys.exit(1)
+
+          print('All dependencies successfully imported!')
+          "
+        shell: bash
+
+      - name: Test basic functionality
+        run: |
+          python -c "
+          from loups import Loups
+          from loups.cli import app
+          from loups.match_template_scan import MatchTemplateScan
+          print('Core modules and classes importable')
+          print(f'Loups class has scan method: {hasattr(Loups, \"scan\")}')
+          "
+        shell: bash
