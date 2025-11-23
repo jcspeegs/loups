@@ -5,24 +5,17 @@ on: [push, pull_request, workflow_dispatch]
 
 jobs:
   test:
+    name: Run Test Suite
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      # - name: Install Nix
-      #   uses: cachix/install-nix-action@v31
-      #   with:
-      #     github_access_token: ${{ secrets.ACCESS_PUBLIC_RO }}
-      # - name: Setup read-only cache
-      #   uses: cachix/cachix-action@v16
-      #   with:
-      #     name: devenv
-      # - name: Install devenv.sh
-      #   run: nix profile install nixpkgs#devenv
+
       - name: Build nix environment
         uses: ./.github/actions/build-nix-environment
         with:
           github-access-token: ${{  secrets.ACCESS_PUBLIC_RO }}
+
       - name: Build shell and run git hooks
         run: devenv test
         working-directory: ${{ github.workspace }}
