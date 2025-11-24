@@ -6,6 +6,7 @@ on:
     workflows: ["Publish to TestPyPI"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   publish-to-pypi:
