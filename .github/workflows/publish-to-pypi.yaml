@@ -12,11 +12,12 @@ jobs:
   publish-to-pypi:
     name: Publish to PyPI
     # Only run if:
-    # 1. Previous workflow succeeded
-    # 2. Triggered by a version tag
+    # 1. Manual trigger (workflow_dispatch), OR
+    # 2. Automatic trigger: previous workflow succeeded AND triggered by version tag
     if: |
-      github.event.workflow_run.conclusion == 'success' &&
-      startsWith(github.event.workflow_run.head_branch, 'v')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       startsWith(github.event.workflow_run.head_branch, 'v'))
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -28,7 +29,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
+          # For workflow_run: use the branch from the triggering workflow
+          # For workflow_dispatch: use the current branch
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || github.event.workflow_run.head_branch }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
