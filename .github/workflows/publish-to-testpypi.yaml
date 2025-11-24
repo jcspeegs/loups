@@ -132,37 +132,37 @@ jobs:
           # Test each dependency can be imported
           try:
               import easyocr
-              print('✓ easyocr')
+              print('[OK] easyocr')
           except ImportError as e:
-              print(f'✗ easyocr: {e}')
+              print(f'[FAIL] easyocr: {e}')
               sys.exit(1)
 
           try:
               import cv2
-              print('✓ opencv-python-headless')
+              print('[OK] opencv-python-headless')
           except ImportError as e:
-              print(f'✗ opencv: {e}')
+              print(f'[FAIL] opencv: {e}')
               sys.exit(1)
 
           try:
               import typer
-              print('✓ typer')
+              print('[OK] typer')
           except ImportError as e:
-              print(f'✗ typer: {e}')
+              print(f'[FAIL] typer: {e}')
               sys.exit(1)
 
           try:
               import rich
-              print('✓ rich')
+              print('[OK] rich')
           except ImportError as e:
-              print(f'✗ rich: {e}')
+              print(f'[FAIL] rich: {e}')
               sys.exit(1)
 
           try:
               from skimage import metrics
-              print('✓ scikit-image')
+              print('[OK] scikit-image')
           except ImportError as e:
-              print(f'✗ scikit-image: {e}')
+              print(f'[FAIL] scikit-image: {e}')
               sys.exit(1)
 
           print('All dependencies successfully imported!')
