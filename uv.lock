@@ -102,7 +102,7 @@ wheels = [
 
 [[package]]
 name = "loups"
-version = "0.0.1.dev3"
+version = "0.0.1.dev4"
 source = { editable = "." }
 dependencies = [
     { name = "easyocr" },
