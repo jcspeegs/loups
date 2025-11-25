@@ -6,8 +6,13 @@ Automatically scan any video with on-screen text overlays to extract information
 
 Originally designed for Lights Out HB fastpitch softball games, but works with any video content that has consistent identifying frames or text overlays.
 
-[![PyPI - Coming Soon](https://img.shields.io/badge/PyPI-coming%20soon-blue)](https://pypi.org/)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://img.shields.io/pypi/v/loups.svg)](https://pypi.org/project/loups/)
+[![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![GitHub Actions](https://github.com/jcspeegs/loups/actions/workflows/test.yaml/badge.svg)](https://github.com/jcspeegs/loups/actions/workflows/test.yaml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Downloads](https://img.shields.io/pypi/dm/loups.svg)](https://pypi.org/project/loups/)
+
+**Links:** [Repository](https://github.com/jcspeegs/loups) • [Issues](https://github.com/jcspeegs/loups/issues) • [PyPI](https://pypi.org/project/loups/) • [Author](mailto:justin@speegs.com)
 
 ## ✨ What is Loups?
 
@@ -21,12 +26,41 @@ Loups uses template matching and OCR to automatically scan videos, detect specif
 - 📺 **TV Shows/Series** - Detect episode titles or scene markers
 - 🎬 **Any Video** - With consistent text overlays or identifying frames
 
+## 📑 Table of Contents
+
+- [Installation](#-installation)
+- [Quick Start](#-quick-start)
+- [Thumbnail Extraction](#️-thumbnail-extraction)
+- [Common Workflows](#-common-workflows)
+- [CLI Options](#️-cli-options)
+- [Features](#-features)
+- [How It Works](#-how-it-works)
+- [Creating Custom Templates](#-creating-custom-templates)
+- [Tips & Best Practices](#-tips--best-practices)
+- [Contributing](#-contributing)
+- [License](#-license)
+
 ## 📦 Installation
 
-**Coming soon to PyPI!** For now, install from source:
+**Requirements:** Python 3.13 or higher
+
+**Supported Platforms:** Linux • macOS • Windows (tested via CI/CD)
 
 ```bash
+# Install from PyPI
 pip install loups
+
+# Verify installation
+loups --help
+```
+
+**Note:** If you're using an older Python version, you may need to upgrade:
+```bash
+# Check your Python version
+python --version
+
+# Install with specific Python version if needed
+python3.13 -m pip install loups
 ```
 
 ## 🚀 Quick Start
@@ -34,7 +68,23 @@ pip install loups
 ```bash
 # 🎬 For Lights Out HB games (uses bundled template)
 loups game_video.mp4
+```
 
+**Expected output:**
+```
+🥎 Scanning video for batter at-bats...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0:05:23
+
+Found 12 batters:
+0:00:00 Game Start
+0:01:15 Sarah Johnson #7
+0:03:42 Emma Martinez #12
+0:05:23 Lily Garcia #9
+...
+```
+
+**More examples:**
+```bash
 # 🎨 For any other video (use your own template)
 loups -t my_template.png video.mp4
 
@@ -271,12 +321,32 @@ Loups works with any video - just provide a template!
 - ✅ The text in matched frames becomes your chapter titles - ensure it's readable!
 
 ### 🔧 Troubleshooting
+
+#### Common Issues
+
+**Python Version Errors**
+- **Error:** `ModuleNotFoundError` or `SyntaxError` during installation
+- **Solution:** Loups requires Python 3.13+. Check your version with `python --version` and upgrade if needed
+
+**First Run is Slow**
+- **Behavior:** First execution takes several minutes to start
+- **Why:** EasyOCR automatically downloads OCR models (~100MB) on first run
+- **Solution:** This is normal! Subsequent runs will be much faster. Be patient during the initial setup.
+
+**Detection Issues**
 - **Missed detections?** Enable `--log --debug` to see template matches and OCR results
 - **Wrong text extracted?** Your template might be too large or including unwanted regions
 - **False positives?** Consider cropping your template more tightly around the identifying region
-- **Template not matching?** Ensure the template exactly matches the video frames
+- **Template not matching?** Ensure the template exactly matches the video frames (size, position, quality)
+
+**OCR Issues**
 - **Names in wrong order?** OCR results are automatically sorted left-to-right
 - **Blank chapter titles?** OCR confidence might be too low - check logs with `--debug`
+- **Garbled text?** Improve video quality or use a clearer template region
+
+**Video Codec Issues**
+- **Error:** `cv2.error` or video won't open
+- **Solution:** Some video formats require additional codecs. Try converting to MP4 (H.264) format
 
 ## 🤝 Contributing
 
