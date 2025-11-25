@@ -26,6 +26,8 @@ Loups uses template matching and OCR to automatically scan videos, detect specif
 - 📺 **TV Shows/Series** - Detect episode titles or scene markers
 - 🎬 **Any Video** - With consistent text overlays or identifying frames
 
+![terminal-cast](loups.gif)
+
 ## 📑 Table of Contents
 
 - [Installation](#-installation)
