@@ -12,6 +12,16 @@ let python-with-flake8-plugins = pkgs.python3.withPackages (ps: with ps; [
   pytest-cov
 ]);
 
+python-with-mkdocs = pkgs.python3.withPackages (ps: with ps; [
+  mkdocs
+  mkdocs-material
+  mkdocstrings
+  mkdocstrings-python
+  mkdocs-git-revision-date-localized-plugin
+  pillow
+  cairosvg
+]);
+
 in
 {
   # https://devenv.sh/binary-caching/
@@ -26,6 +36,7 @@ in
   # https://devenv.sh/packages/
   packages = with pkgs; [
     python-with-flake8-plugins
+    python-with-mkdocs
     git
     zlib
 
@@ -52,6 +63,9 @@ in
   scripts = {
     hello.exec = ''
       echo hello from $GREET
+    '';
+    docs.exec = ''
+      mkdocs serve
     '';
   };
 

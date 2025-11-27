@@ -204,28 +204,36 @@ class Loups:
         on_batter_found=None,
         on_progress=None,
     ):
-        """Loups object constructor.
+        """Initialize Loups video scanner.
 
-        Parameters
-            template: image used to identify a new batter
-            video: video file to parse.  Optional if testing a single image
-            method: type of template matching operation (TM_SQDIFF, TM_SQDIFF_NORMED,
-            TM_CCORR, TM_CCORR_NORMED, TM_CCOEFF, TM_CCOEFF_NORMED)
-            threshold: threshold used to accept a match (differs by method)
-            resolution: number of frames to analyze per second
-            on_batter_found: optional callback function called when a new
-                batter is found.
+        Args:
+            scannable: Path to video file to scan.
+            template: Path to template image used to identify batters.
+            method: Template matching method (TM_SQDIFF, TM_SQDIFF_NORMED,
+                TM_CCORR, TM_CCORR_NORMED, TM_CCOEFF, TM_CCOEFF_NORMED).
+                Default: TM_CCOEFF_NORMED.
+            threshold: Confidence threshold for accepting matches (0.0-1.0).
+                Default varies by method.
+            resolution: Number of frames to analyze per second. Default: 3.
+            on_batter_found: Optional callback when batter is found.
                 Signature: callback(batter_info: FrameBatterInfo) -> None
-            on_progress: optional callback function called on each frame
-                processed.
-                Signature: callback(frames_processed: int, total_frames: int)
-                -> None
+            on_progress: Optional callback for progress updates.
+                Signature: callback(frames_processed: int, total_frames: int) -> None
 
         Examples:
-            game = Loups(video) # Initialize game
-            print(game) # Print timestamps of at-bats in game
-            game[14] # At-bat information for the 15th frame of video
-            game.n # Number of batters in game
+            ```python
+            # Scan a video
+            game = Loups("game.mp4", "template.png")
+            game.scan()
+            print(game.batters)
+            print(f"Found {game.batter_count} batters")
+
+            # With callbacks
+            def on_found(batter_info):
+                print(f"Found: {batter_info.batter_name}")
+
+            game = Loups("game.mp4", "template.png", on_batter_found=on_found)
+            ```
         """
         self._scannable = scannable
         self._capture = self.create_capture()

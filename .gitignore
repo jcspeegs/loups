@@ -9,6 +9,13 @@ devenv.local.yaml
 # pre-commit
 .pre-commit-config.yaml
 
+# mkdocs
+.cache
+site/
+
+# macOS
+.DS_Store
+
 /data/
 plans/
 *.log*
