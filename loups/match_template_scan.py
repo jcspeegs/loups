@@ -1,4 +1,4 @@
-"""Scan an image for existance of a template image."""
+"""Template matching for detecting specific patterns in video frames."""
 
 import logging
 from collections import namedtuple
@@ -16,7 +16,13 @@ MatchConfig = namedtuple("MatchConfig", "image, templ, method")
 
 
 class MatchTemplateResult(NamedTuple):
-    """Hold the results of matchTemplate scans."""
+    """Results from a template matching operation.
+
+    Attributes:
+        is_match: Whether the template was found above threshold.
+        score: Confidence score from template matching algorithm.
+        top_left_point: Top-left corner coordinates of the match location.
+    """
 
     is_match: bool
     score: float
@@ -24,23 +30,30 @@ class MatchTemplateResult(NamedTuple):
 
 
 class MatchDefault(NamedTuple):
-    """Holds default match method configuration parameters."""
+    """Default configuration parameters for a template matching method.
+
+    Attributes:
+        threshold: Default threshold value for accepting matches.
+        optimal_function: Whether to use "min" or "max" for determining best match.
+    """
 
     threshold: float
     optimal_function: Union[Literal["min"], Literal["max"]]
 
 
 class MatchTemplateScan:
-    """Scan an image for the existence of a template."""
+    """Scan an image for the existence of a template pattern."""
 
     def __init__(self, image: np.ndarray, template: np.ndarray, method: str):
-        """Initialize a new instance of MatchTemplateScan.
+        """Initialize a template matching scanner.
 
-        Parameters
-            image: A video frame or image after being read by cv.VideoCapture
-            template: An image to search for in self.image
-            method: The match method to use in your search
-                    (https://docs.opencv.org/4.x/df/dfb/group__imgproc__object.html#ga3a7850640f1fe1f58fe91a2d7583695d)
+        Args:
+            image: Video frame or image to search (grayscale numpy array).
+            template: Template pattern to search for (grayscale numpy array).
+            method: OpenCV template matching method name (e.g., "TM_CCOEFF_NORMED").
+
+        Note:
+            See https://docs.opencv.org/4.x/df/dfb/group__imgproc__object.html
         """
         self.image = image
         self.template = template
@@ -48,7 +61,11 @@ class MatchTemplateScan:
 
     @property
     def method_default(self) -> dict[str, MatchDefault]:
-        """Match template method default config options."""
+        """Get default configuration for all template matching methods.
+
+        Returns:
+            Dictionary mapping method names to their default configurations.
+        """
         return {
             "TM_SQDIFF": MatchDefault(threshold=None, optimal_function="min"),
             "TM_SQDIFF_NORMED": MatchDefault(threshold=None, optimal_function="min"),
@@ -60,24 +77,40 @@ class MatchTemplateScan:
 
     @property
     def method_attr(self) -> int:
-        """Convert a match template method name to its index integer."""
+        """Get OpenCV constant value for the template matching method.
+
+        Returns:
+            Integer constant from cv2 module (e.g., cv.TM_CCOEFF_NORMED).
+        """
         return getattr(cv, self.method)
 
     @property
     def cfg(self) -> MatchConfig:
-        """Return a match template config object."""
+        """Get configuration object for template matching.
+
+        Returns:
+            MatchConfig namedtuple with image, template, and method.
+        """
         return MatchConfig(
             image=self.image, templ=self.template, method=self.method_attr
         )
 
     @cached_property
     def match(self) -> cv.matchTemplate:
-        """Scan an image for a template image."""
+        """Perform template matching operation.
+
+        Returns:
+            Result array from cv.matchTemplate showing match scores.
+        """
         return cv.matchTemplate(**self.cfg._asdict())
 
     @property
     def result(self) -> MatchTemplateResult:
-        """Return the relevant matchTemplate score and location."""
+        """Get the final match result with threshold and quadrant checks.
+
+        Returns:
+            MatchTemplateResult with match status, score, and location.
+        """
         meets_threshold, score, top_left_loc = self.parse_match_result()
 
         in_quadrant = self.match_quadrant(top_left_loc)
@@ -88,7 +121,14 @@ class MatchTemplateScan:
         return MatchTemplateResult(is_match, score, top_left_loc)
 
     def match_quadrant(self, match_top_left) -> bool:
-        """Determine if a match is found in the bottom left quadrant."""
+        """Check if match is located in the bottom-left quadrant of the image.
+
+        Args:
+            match_top_left: Top-left corner Point of the match location.
+
+        Returns:
+            True if match is in bottom-left quadrant, False otherwise.
+        """
         template_size = Size(*self.template.shape)
         logger.debug(f"{template_size=}")
 
@@ -108,10 +148,13 @@ class MatchTemplateScan:
         return is_bottom_left_quadrant
 
     def parse_match_result(self) -> tuple[bool, float, Point]:
-        """Interpret match result.
+        """Parse raw template match results based on method type.
 
-        Depending on the matchTemplate method used, we either want to work with the min
-        or max return score and return location.
+        Different template matching methods require min or max interpretation.
+        This method applies the correct logic based on the chosen method.
+
+        Returns:
+            Tuple of (meets_threshold, score, top_left_location).
         """
         default = self.method_default.get(self.method)
         logger.debug(f"{default=}")

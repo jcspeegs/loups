@@ -27,12 +27,14 @@ in
   packages = with pkgs; [
     python-with-flake8-plugins
     git
-    nix-ld
     zlib
 
     # # To avoid using all of these, use opencv-python-headless
     # mesa
     # libglvnd
+  ] ++ lib.optionals pkgs.stdenv.isLinux [
+    # nix-ld is only available on Linux
+    pkgs.nix-ld
   ];
 
   languages.python = {

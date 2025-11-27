@@ -26,7 +26,14 @@ err_console = Console(stderr=True)
 
 
 def get_default_template() -> Path:
-    """Get the path to the default bundled template."""
+    """Get path to the default bundled template image.
+
+    Returns:
+        Path to the bundled template_solid.png file.
+
+    Raises:
+        FileNotFoundError: If the default template cannot be located.
+    """
     try:
         # Use importlib.resources to locate the bundled template
         template_path = files("loups").joinpath("data/template_solid.png")
@@ -45,7 +52,14 @@ def get_default_template() -> Path:
 
 
 def get_default_thumbnail_template() -> Path:
-    """Get the path to the default bundled thumbnail template."""
+    """Get path to the default bundled thumbnail template image.
+
+    Returns:
+        Path to the bundled thumbnail_template.png file.
+
+    Raises:
+        FileNotFoundError: If the default thumbnail template cannot be located.
+    """
     try:
         # Use importlib.resources to locate the bundled thumbnail template
         template_path = files("loups").joinpath("data/thumbnail_template.png")
@@ -65,7 +79,17 @@ def get_default_thumbnail_template() -> Path:
 def setup_logging(
     log_path: Optional[Path] = None, quiet: bool = False, debug: bool = False
 ) -> None:
-    """Set up logging with rotation."""
+    """Configure logging with file rotation and error output.
+
+    Args:
+        log_path: Optional path for log file. If None, file logging is disabled.
+        quiet: If True, suppress non-error console output.
+        debug: If True, set file log level to DEBUG instead of INFO.
+
+    Note:
+        File logs rotate at 10MB with 3 backup files.
+        Errors always go to stderr regardless of quiet mode.
+    """
     # Configure root logger
     root_logger = logging.getLogger()
     root_logger.setLevel(logging.DEBUG)
@@ -94,7 +118,20 @@ def setup_logging(
 
 
 def format_elapsed_time(seconds: float) -> str:
-    """Format elapsed time as HH:MM:SS."""
+    """Format elapsed time as HH:MM:SS or MM:SS.
+
+    Args:
+        seconds: Elapsed time in seconds.
+
+    Returns:
+        Formatted time string (MM:SS if < 1 hour, otherwise HH:MM:SS).
+
+    Examples:
+        ```python
+        format_elapsed_time(65)    # "01:05"
+        format_elapsed_time(3665)  # "01:01:05"
+        ```
+    """
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
@@ -112,7 +149,18 @@ def create_progress_display(
     percent: Optional[float] = None,
     last_batter: Optional[str] = None,
 ) -> Text:
-    """Create the animated progress display with baseball emojis."""
+    """Create animated progress display with softball animation.
+
+    Args:
+        elapsed: Elapsed time in seconds.
+        batter_count: Number of batters found so far.
+        spinner_state: Current animation frame number.
+        percent: Optional scan completion percentage.
+        last_batter: Optional name of most recently found batter.
+
+    Returns:
+        Rich Text object with animated progress display.
+    """
     # Softball moving left and right (bouncing animation)
     positions = ["🥎   ", " 🥎  ", "  🥎 ", "   🥎", "  🥎 ", " 🥎  "]
     softball_display = positions[spinner_state % len(positions)]
@@ -143,7 +191,14 @@ def create_progress_display(
 def create_thumbnail_progress_display(
     spinner_state: int,
 ) -> Text:
-    """Create the animated progress display for thumbnail extraction."""
+    """Create animated progress display for thumbnail extraction.
+
+    Args:
+        spinner_state: Current animation frame number.
+
+    Returns:
+        Rich Text object with animated progress display.
+    """
     positions = ["🥎   ", " 🥎  ", "  🥎 ", "   🥎", "  🥎 ", " 🥎  "]
     softball_display = positions[spinner_state % len(positions)]
 
@@ -154,12 +209,24 @@ def create_thumbnail_progress_display(
 
 
 def _detect_piped_output() -> bool:
-    """Check if stdout is being piped/redirected."""
+    """Check if stdout is being piped or redirected.
+
+    Returns:
+        True if stdout is not a TTY (piped or redirected), False otherwise.
+    """
     return not sys.stdout.isatty()
 
 
 def _calculate_show_progress(quiet: bool, is_piped: bool) -> bool:
-    """Determine if progress should be shown based on quiet and piped state."""
+    """Determine if progress should be shown.
+
+    Args:
+        quiet: User requested quiet mode.
+        is_piped: Output is being piped or redirected.
+
+    Returns:
+        True if progress should be displayed, False otherwise.
+    """
     return not quiet and not is_piped
 
 
@@ -174,22 +241,24 @@ def _run_thumbnail_extraction(
     is_fatal_on_error: bool = True,
     show_header: bool = True,
 ) -> Optional:
-    """
-    Unified thumbnail extraction with configurable behavior.
+    """Extract thumbnail with configurable error handling behavior.
+
+    Shared helper for both standalone thumbnail command and integrated extraction
+    during chapter scanning.
 
     Args:
-        video: Path to video file
-        template: Path to thumbnail template (None = use default)
-        output: Path for output thumbnail (None = auto-generate)
-        threshold: Minimum SSIM score (0.0-1.0)
-        scan_duration: Maximum seconds to scan
-        frames_per_second: Frame sampling rate
-        quiet: Suppress output
-        is_fatal_on_error: If True, exit on errors; if False, warn and return None
-        show_header: If True, show "Scanning video:" header
+        video: Path to video file.
+        template: Path to thumbnail template (None = use default).
+        output: Path for output thumbnail (None = auto-generate).
+        threshold: Minimum SSIM score (0.0-1.0).
+        scan_duration: Maximum seconds to scan.
+        frames_per_second: Frame sampling rate.
+        quiet: Suppress output.
+        is_fatal_on_error: If True, exit on errors; if False, warn and return None.
+        show_header: If True, show "Scanning video:" header.
 
     Returns:
-        ThumbnailResult on success, None on failure (when not fatal)
+        ThumbnailResult on success, None on failure (when not fatal).
     """
     is_piped = _detect_piped_output()
     show_progress = _calculate_show_progress(quiet, is_piped)
@@ -380,7 +449,24 @@ def thumbnail(
         help="Enable DEBUG level logging to file (default is INFO)",
     ),
 ) -> None:
-    """Extract thumbnail from video using SSIM-based template matching."""
+    """Extract thumbnail from video using SSIM-based template matching.
+
+    Scan video frames from the beginning to find a frame matching the template.
+    Uses Structural Similarity Index (SSIM) for accurate frame matching.
+    Stops at first match above threshold for efficiency.
+
+    Examples:
+        Extract with default template:
+        ```bash
+        loups video.mp4 thumbnail
+        ```
+
+        Custom template and output:
+        ```bash
+        loups video.mp4 thumbnail --thumbnail-template custom.png \
+            --thumbnail-output thumb.jpg
+        ```
+    """
     # Get video from parent context
     video = ctx.parent.params["video"]
     # Ensure video is a Path object (defensive programming)
@@ -484,11 +570,32 @@ def callback(
         help="Frame sampling rate for thumbnail extraction",
     ),
 ) -> None:
-    """
-    Scan Lights Out HB fastpitch game videos to extract batter information.
+    """Scan video to extract batter information and generate YouTube chapters.
 
-    By default, scans a video for batters.
-    Use 'thumbnail' command to extract thumbnails.
+    Main command for processing Lights Out HB fastpitch game videos (or any video
+    with consistent identifying frames). Detects batters using template matching
+    and extracts names via OCR. Outputs YouTube-compatible chapter timestamps.
+
+    Examples:
+        Basic scan with default template:
+        ```bash
+        loups game.mp4
+        ```
+
+        Save chapters to file:
+        ```bash
+        loups -o chapters.txt game.mp4
+        ```
+
+        Extract thumbnail and scan for batters:
+        ```bash
+        loups --extract-thumbnail --thumbnail-output thumb.jpg -o chapters.txt game.mp4
+        ```
+
+        Use 'thumbnail' subcommand for standalone thumbnail extraction:
+        ```bash
+        loups game.mp4 thumbnail
+        ```
     """
     # If a subcommand was invoked, let it run
     if ctx.invoked_subcommand is not None:

@@ -1,10 +1,29 @@
-"""
-Scan a Lights Out HB fastpitch game video and extract information.
+"""Video scanner for extracting batter information using template matching and OCR.
 
-Game information currently extracted:
-  * Timestamps of each Lights Out HB batter
-  * Total number of Lights Out HB batters
-  * ...
+This module provides the core Loups class for scanning videos to detect
+batter at-bats or similar events. Originally designed for Lights Out HB
+fastpitch softball games, but works with any video containing consistent
+identifying frames.
+
+Key Features:
+    * Template-based frame detection using OpenCV
+    * OCR text extraction for batter names and jersey numbers
+    * YouTube chapter timestamp generation
+    * Configurable frame sampling for performance
+    * Progress callbacks for UI integration
+
+Example:
+    ```python
+    from loups import Loups
+
+    # Scan a video
+    game = Loups("game.mp4", "template.png")
+    game.scan()
+
+    # Print YouTube chapters
+    print(game.batters)
+    print(f"Found {game.batter_count} batters")
+    ```
 """
 
 import logging
@@ -16,16 +35,30 @@ import cv2 as cv
 import easyocr
 
 from .geometry import Point, Size
-from .match_template_scan import MatchTemplateResult, MatchTemplateScan
+from .match_template_scan import MatchTemplateScan
 
 logger = logging.getLogger(__name__)
 
 
 class MilliSecond(float):
-    """Provide a custom millisecond formatter to define YouTube chapters."""
+    """Custom millisecond type with YouTube chapter formatting.
+
+    A float subclass that formats time values as YouTube-compatible chapter
+    timestamps (MM:SS or HH:MM:SS format).
+    """
 
     def __new__(cls, value):
-        """Restrict MilliSecond objects to non-negative numbers."""
+        """Create a new MilliSecond instance.
+
+        Args:
+            value: Time value in milliseconds.
+
+        Returns:
+            New MilliSecond instance.
+
+        Raises:
+            ValueError: If value is negative.
+        """
         if value < 0:
             raise ValueError(
                 f"MilliSecond cannot be {value}, " "it must be a non-negative number."
@@ -33,11 +66,28 @@ class MilliSecond(float):
         return super().__new__(cls, value)
 
     def __str__(self):
-        """Override the Float.__str__ to follow YouTube chapter formatting."""
+        """Convert to string using YouTube chapter format.
+
+        Returns:
+            Formatted timestamp string (MM:SS or HH:MM:SS).
+        """
         return self.yt_format()
 
     def yt_format(self) -> str:
-        """Format milliseconds as hh:mm:ss as used in YouTube chapter markers."""
+        """Format milliseconds as YouTube chapter timestamp.
+
+        Returns:
+            Timestamp in MM:SS format (or HH:MM:SS if >= 1 hour).
+
+        Examples:
+            ```python
+            ms = MilliSecond(65000)  # 65 seconds
+            print(ms.yt_format())  # "01:05"
+
+            ms = MilliSecond(3665000)  # 1 hour, 1 minute, 5 seconds
+            print(ms.yt_format())  # "01:01:05"
+            ```
+        """
         td = timedelta(milliseconds=self)
 
         hours = td // timedelta(hours=1)
@@ -52,7 +102,15 @@ class MilliSecond(float):
 
 
 class FrameBatterInfo(NamedTuple):
-    """Holds batter information for a frame of a video."""
+    """Batter information extracted from a single video frame.
+
+    Attributes:
+        ms: Timestamp of the frame in milliseconds.
+        match_score: Template matching confidence score (0.0-1.0).
+        is_batter: Whether a batter was detected in this frame.
+        new_batter: Whether this is a new batter (transition from previous frame).
+        batter_name: Name and jersey number extracted via OCR, or empty string.
+    """
 
     ms: MilliSecond
     match_score: float
@@ -62,18 +120,46 @@ class FrameBatterInfo(NamedTuple):
 
 
 class BatterInfo(list[FrameBatterInfo]):
-    """A collection of FrameBatterInfo objects."""
+    """Collection of detected batters formatted for YouTube chapters.
+
+    A list subclass containing FrameBatterInfo objects that can be formatted
+    as YouTube-compatible chapter markers.
+    """
 
     def __str__(self):
-        """Display BatterInfo."""
+        """Convert to YouTube chapter format.
+
+        Returns:
+            Multi-line string with YouTube chapter timestamps and names.
+        """
         return self.display()
 
     def display(self) -> str:
-        """Display BatterInfo as needed to create YouTube video chapters.
+        """Format batter information as YouTube video chapters.
 
-        The first chapter must begin with timestamp 00:00 and chapters must be at least
-        10s.  If the first batter is up within the first 10s of the video then move the
-        timestamp back to 00:00.
+        Ensures YouTube chapter requirements are met:
+        - First chapter begins at 00:00
+        - Chapters are at least 10s apart
+        - If first batter appears within 10s, timestamp is moved to 00:00
+
+        Returns:
+            Multi-line string with format "HH:MM:SS Name" per line.
+
+        Examples:
+            ```python
+            batters = BatterInfo([
+                FrameBatterInfo(
+                    MilliSecond(15000), 0.95, True, True, "Sarah Johnson #7"
+                ),
+                FrameBatterInfo(
+                    MilliSecond(45000), 0.93, True, True, "Emma Martinez #12"
+                )
+            ])
+            print(batters.display())
+            # 00:00 Game Time
+            # 00:15 Sarah Johnson #7
+            # 00:45 Emma Martinez #12
+            ```
         """
         # TODO: Must be at least 3 chapters
         # TODO: If two batters up within < 10s then combine their names
@@ -153,66 +239,123 @@ class Loups:
 
     @property
     def method(self):
-        """Returns the method used for template matching."""
+        """Get the template matching method name.
+
+        Returns:
+            Template matching method string (e.g., "TM_CCOEFF_NORMED").
+        """
         return self._method
 
     @property
     def scannable(self):
-        """Returns the file to be scanned."""
+        """Get the path to the video file being scanned.
+
+        Returns:
+            Path to the video file.
+        """
         return self._scannable
 
     @property
     def capture(self):
-        """Returns cv.VideoCapture of scannable."""
+        """Get the OpenCV VideoCapture object.
+
+        Returns:
+            cv.VideoCapture instance for the video file.
+        """
         return self._capture
 
     @property
     def total_frames(self):
-        """Returns total frames in scannable."""
+        """Get total number of frames in the video.
+
+        Returns:
+            Total frame count.
+        """
         return self.capture.get(cv.CAP_PROP_FRAME_COUNT)
 
     @property
     def frame_rate(self):
-        """Returns the frame_rate of scannable."""
+        """Get the frame rate of the video.
+
+        Returns:
+            Frame rate in frames per second (fps).
+        """
         return self._frame_rate
 
     @property
     def template(self):
-        """Returns an image as a numpy ndarray."""
+        """Get the template image as a numpy array.
+
+        Returns:
+            Grayscale template image as numpy ndarray.
+        """
         return self._template
 
     @template.setter
     def template(self, value):
+        """Set the template image from file path.
+
+        Args:
+            value: Path to template image file.
+        """
         self._template = cv.imread(value, cv.IMREAD_GRAYSCALE)
 
     @classmethod
     def get_reader(cls):
-        """Lazy initialization of easyocr Reader."""
+        """Get or initialize the shared EasyOCR reader.
+
+        Lazy initialization pattern to avoid loading OCR models until needed.
+
+        Returns:
+            Initialized easyocr.Reader instance for English text.
+        """
         return easyocr.Reader(["en"]) if cls._reader is None else cls._reader
 
     def create_capture(self) -> cv.VideoCapture:
-        """Return the cv.VideoCapture of self.scannable."""
+        """Create OpenCV VideoCapture for the video file.
+
+        Returns:
+            cv.VideoCapture object for reading video frames.
+        """
         return cv.VideoCapture(self.scannable)
 
     def get_frame_rate(self) -> float:
-        """Return frame rate of scannable.
+        """Get frame rate from video capture.
 
-        https://docs.opencv.org/4.x/d4/d15/group__videoio__flags__base.html#gaeb8dd9c89c10a5c63c139bf7c4f5704d
+        Uses OpenCV CAP_PROP_FPS property.
+
+        Returns:
+            Frame rate in frames per second.
+
+        Note:
+            See https://docs.opencv.org/4.x/d4/d15/group__videoio__flags__base.html
         """
         return self.capture.get(5)
 
     def frame_frequency(self) -> int:
-        """Get the number of frames to skip before processing a new frame."""
+        """Calculate frame sampling interval based on resolution.
+
+        Returns:
+            Number of frames to skip between samples (e.g., 10 means every 10th frame).
+        """
         from .frame_utils import calculate_frame_frequency
 
         return calculate_frame_frequency(self.frame_rate, self.resolution)
 
     def timestamp(self):
-        """Get the timestamp of video frame in ms."""
+        """Get current video position timestamp.
+
+        Returns:
+            Current timestamp in milliseconds.
+        """
         return self.capture.get(0)
 
-    def match_template_scan(self) -> MatchTemplateResult:
-        """Search for self.template in an image."""
+    def match_template_scan(self) -> MatchTemplateScan:
+        """Perform template matching on current frame.
+
+        Returns:
+            MatchTemplateScan object containing match results.
+        """
         scan = MatchTemplateScan(
             image=cv.cvtColor(self.frame, cv.COLOR_BGR2GRAY),
             template=self.template,
@@ -221,9 +364,15 @@ class Loups:
         return scan
 
     def new_batter(self, res, ms, threshold: int = 2000) -> bool:
-        """Determine if a frame conatins a new batter.
+        """Determine if a frame contains a new batter.
 
-        threshold is the time in ms that can elapse without triggering a new batter
+        Args:
+            res: List of previous FrameBatterInfo results.
+            ms: Current frame timestamp in milliseconds.
+            threshold: Minimum time in milliseconds between new batters.
+
+        Returns:
+            True if this frame represents a new batter, False otherwise.
         """
         new_batter_frame = self.prev_frame_is_not_batter(res)
         logger.debug(f"{new_batter_frame=}")
@@ -241,7 +390,15 @@ class Loups:
         )
 
     def prev_batter_frame_timestamp(self, frames) -> int:
-        """Get the timestamp in ms of the previous frame which included a batter."""
+        """Get timestamp of the most recent frame containing a batter.
+
+        Args:
+            frames: List of FrameBatterInfo objects to search.
+
+        Returns:
+            Timestamp in milliseconds of the last batter frame, or None
+            if no batters found.
+        """
         try:
             ts = max(frame.ms for frame in frames if frame.is_batter)
         except ValueError:
@@ -250,7 +407,14 @@ class Loups:
 
     @staticmethod
     def prev_frame_is_not_batter(res: list) -> bool:
-        """Determine if the previous frame contained a batter."""
+        """Check if the previous frame did not contain a batter.
+
+        Args:
+            res: List of FrameBatterInfo results.
+
+        Returns:
+            True if previous frame had no batter, False otherwise.
+        """
         try:
             prev_frame_is_batter = res[-1].is_batter
         except IndexError:
@@ -258,7 +422,22 @@ class Loups:
         return not prev_frame_is_batter
 
     def batter_name(self, match_top_left: Point, threshold: float = 0.2) -> str:
-        """Determine batter name."""
+        """Extract batter name from frame using OCR.
+
+        Args:
+            match_top_left: Top-left corner of template match location.
+            threshold: Minimum OCR confidence score to accept text
+                (0.0-1.0).
+
+        Returns:
+            Extracted batter name with jersey number, or empty string if no text found.
+
+        Examples:
+            ```python
+            name = game.batter_name(Point(100, 200))
+            # Returns: "Sarah Johnson #7"
+            ```
+        """
         template_size = Size(*self.template.shape)
 
         match_bottom_right = Point(
@@ -349,7 +528,23 @@ class Loups:
     # return self.frame
 
     def scan(self):
-        """Scan a scannable for a template."""
+        """Scan the video file to detect batters and extract information.
+
+        Process video frames at the specified resolution, perform template matching,
+        and use OCR to extract batter names. Results are stored in the `batters`
+        attribute.
+
+        Returns:
+            Self (for method chaining).
+
+        Examples:
+            ```python
+            game = Loups("video.mp4", "template.png")
+            game.scan()
+            print(f"Found {game.batter_count} batters")
+            print(game.batters)
+            ```
+        """
         frame_count = 0
 
         # Initalize a list to collect FrameBatterInfo objects

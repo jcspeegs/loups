@@ -14,7 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 class ThumbnailResult(NamedTuple):
-    """Holds the result of a thumbnail extraction operation."""
+    """Result from a thumbnail extraction operation.
+
+    Attributes:
+        success: Whether thumbnail extraction succeeded.
+        frame_number: Frame number where match was found.
+        timestamp_ms: Timestamp of matched frame in milliseconds.
+        ssim_score: SSIM similarity score of the match (0.0-1.0).
+        output_path: Path where thumbnail image was saved.
+    """
 
     success: bool
     frame_number: int
@@ -53,12 +61,20 @@ class ThumbnailExtractor:
         self.frame_rate = self.capture.get(cv.CAP_PROP_FPS)
 
     def frame_frequency(self) -> int:
-        """Get the number of frames to skip before processing a new frame."""
+        """Calculate frame sampling interval based on resolution.
+
+        Returns:
+            Number of frames to skip between samples (e.g., 10 means every 10th frame).
+        """
         return calculate_frame_frequency(self.frame_rate, self.resolution)
 
 
 def get_default_thumbnail_template() -> Path:
-    """Return path to bundled default thumbnail template."""
+    """Get path to bundled default thumbnail template.
+
+    Returns:
+        Path to the bundled thumbnail_template.png file.
+    """
     return Path(__file__).parent / "data" / "thumbnail_template.png"
 
 
