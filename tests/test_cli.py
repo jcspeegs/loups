@@ -31,8 +31,17 @@ from loups.cli import app
 
 @pytest.fixture
 def runner():
-    """Create a CliRunner for testing."""
-    return CliRunner(mix_stderr=False)
+    """Create a CliRunner for testing.
+
+    Note: mix_stderr parameter support varies by Typer version.
+    Older versions don't support it, so we use a try-except approach.
+    """
+    try:
+        # Newer Typer versions support mix_stderr
+        return CliRunner(mix_stderr=False)
+    except TypeError:
+        # Older Typer versions don't support mix_stderr
+        return CliRunner()
 
 
 @pytest.fixture
@@ -199,8 +208,14 @@ class TestErrorHandling:
         with patch("loups.cli.sys.stdout.isatty", return_value=False):
             result = runner.invoke(app, [str(test_video)])
 
-        # Error should be in stderr, not stdout
-        assert "Error:" in result.stderr or "Scan failed" in result.stderr
+        # Error should be in stderr (if separately captured) or output
+        try:
+            error_output = result.stderr
+        except ValueError:
+            # Older Typer versions don't support mix_stderr, check combined output
+            error_output = result.output
+
+        assert "Error:" in error_output or "Scan failed" in error_output
         assert result.exit_code != 0
 
     def test_errors_go_to_stderr_in_interactive_mode(
@@ -213,8 +228,14 @@ class TestErrorHandling:
         with patch("loups.cli.sys.stdout.isatty", return_value=True):
             result = runner.invoke(app, [str(test_video)])
 
-        # Error should be in stderr
-        assert "Error:" in result.stderr or "Scan failed" in result.stderr
+        # Error should be in stderr (if separately captured) or output
+        try:
+            error_output = result.stderr
+        except ValueError:
+            # Older Typer versions don't support mix_stderr, check combined output
+            error_output = result.output
+
+        assert "Error:" in error_output or "Scan failed" in error_output
         assert result.exit_code != 0
 
 

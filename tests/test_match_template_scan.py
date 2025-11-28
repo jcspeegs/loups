@@ -331,11 +331,13 @@ class TestMatchTemplateScanQuadrant:
     def test_quadrant_boundary_horizontal(self):
         """Test match exactly on horizontal quadrant boundary."""
         # Create image 200x200, template 50x50
-        # Place template so bottom-left is exactly at y=100 (boundary)
-        template = np.ones((50, 50), dtype=np.uint8) * 255
+        # Use non-uniform template to avoid TM_CCOEFF_NORMED division by zero
+        template = np.zeros((50, 50), dtype=np.uint8)
+        template[10:40, 10:40] = 255  # White square pattern
+
         image = np.zeros((200, 200), dtype=np.uint8)
         # Template at (20, 50) means bottom at y=100 (exactly on boundary)
-        image[50:100, 20:70] = 255
+        image[50:100, 20:70] = template
 
         scanner = MatchTemplateScan(image, template, "TM_CCOEFF_NORMED")
         result = scanner.result
@@ -430,8 +432,13 @@ class TestMatchTemplateScanEdgeCases:
 
     def test_template_same_size_as_image(self):
         """Test template exactly same size as image."""
-        image = np.ones((100, 100), dtype=np.uint8) * 255
-        template = np.ones((100, 100), dtype=np.uint8) * 255
+        # Use non-uniform pattern to avoid TM_CCOEFF_NORMED division by zero
+        template = np.zeros((100, 100), dtype=np.uint8)
+        # Create a checkerboard pattern
+        template[0::2, 0::2] = 255
+        template[1::2, 1::2] = 255
+
+        image = template.copy()
 
         scanner = MatchTemplateScan(image, template, "TM_CCOEFF_NORMED")
         result = scanner.result
@@ -490,9 +497,12 @@ class TestMatchTemplateScanEdgeCases:
 
     def test_match_at_origin(self):
         """Test match at coordinate (0, 0)."""
-        template = np.ones((50, 50), dtype=np.uint8) * 255
+        # Use non-uniform template to avoid TM_CCOEFF_NORMED division by zero
+        template = np.zeros((50, 50), dtype=np.uint8)
+        template[10:40, 10:40] = 255  # White square pattern
+
         image = np.zeros((200, 200), dtype=np.uint8)
-        image[0:50, 0:50] = 255
+        image[0:50, 0:50] = template
 
         scanner = MatchTemplateScan(image, template, "TM_CCOEFF_NORMED")
         result = scanner.result
