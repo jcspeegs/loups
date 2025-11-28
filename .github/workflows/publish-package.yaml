@@ -47,7 +47,6 @@ jobs:
         with:
           verbose: true
           skip-existing: true
-
   deploy-docs:
     name: Deploy Documentation to GitHub Pages
     runs-on: ubuntu-latest
