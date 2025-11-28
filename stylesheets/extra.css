@@ -1,0 +1,537 @@
+/* Loups Documentation - Custom Styling */
+/* Black/Cyan Theme Enhancements with Icon Animations */
+
+:root {
+  --loups-cyan: #00ffff;
+  --loups-cyan-glow: rgba(0, 255, 255, 0.5);
+  --loups-cyan-dark: #00b8d4;
+  --loups-gradient-start: #00ffff;
+  --loups-gradient-end: #00b8d4;
+}
+
+/* ============================================
+   Icon Animations
+   ============================================ */
+
+/* Pulse Animation */
+@keyframes icon-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.icon-pulse {
+  animation: icon-pulse 2s ease-in-out infinite;
+}
+
+/* Spin Animation */
+@keyframes icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.icon-spin {
+  animation: icon-spin 2s linear infinite;
+}
+
+/* Bounce Animation */
+@keyframes icon-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.icon-bounce {
+  animation: icon-bounce 1.5s ease-in-out infinite;
+}
+
+/* Glow Effect */
+@keyframes icon-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px var(--loups-cyan-glow));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px var(--loups-cyan-glow)) drop-shadow(0 0 12px var(--loups-cyan-glow));
+  }
+}
+
+.icon-glow {
+  animation: icon-glow 2s ease-in-out infinite;
+}
+
+/* Hover Glow on Icons */
+.md-icon:hover,
+.twemoji:hover {
+  filter: drop-shadow(0 0 4px var(--loups-cyan-glow));
+  transition: filter 0.3s ease;
+}
+
+/* ============================================
+   Icon Sizing
+   ============================================ */
+
+.icon-xl {
+  font-size: 2em;
+  width: 2em;
+  height: 2em;
+}
+
+.icon-2xl {
+  font-size: 3em;
+  width: 3em;
+  height: 3em;
+}
+
+.icon-3xl {
+  font-size: 4em;
+  width: 4em;
+  height: 4em;
+}
+
+/* ============================================
+   Feature Cards Styling
+   ============================================ */
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
+}
+
+.feature-card {
+  background: var(--md-code-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card:hover {
+  border-color: var(--loups-cyan);
+  box-shadow: 0 0 20px var(--loups-cyan-glow);
+  transform: translateY(-4px);
+}
+
+.feature-card .icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  display: inline-block;
+}
+
+.feature-card h3 {
+  margin-top: 0.5rem;
+  color: var(--loups-cyan);
+}
+
+/* ============================================
+   Admonition Icon Colors
+   ============================================ */
+
+.admonition.tip .admonition-title::before,
+.admonition.note .admonition-title::before {
+  color: var(--loups-cyan);
+}
+
+.admonition.warning .admonition-title::before {
+  color: #ffa726;
+}
+
+.admonition.danger .admonition-title::before {
+  color: #ef5350;
+}
+
+.admonition.success .admonition-title::before {
+  color: #66bb6a;
+}
+
+.admonition.example .admonition-title::before {
+  color: var(--loups-cyan);
+}
+
+/* ============================================
+   Code Block Enhancements
+   ============================================ */
+
+.highlight code {
+  border-left: 3px solid var(--loups-cyan);
+}
+
+.md-typeset .highlight .filename {
+  background: linear-gradient(90deg, var(--loups-gradient-start), var(--loups-gradient-end));
+  color: #000;
+  font-weight: bold;
+}
+
+/* Copy button glow on hover */
+.md-clipboard:hover {
+  color: var(--loups-cyan);
+  filter: drop-shadow(0 0 4px var(--loups-cyan-glow));
+}
+
+/* ============================================
+   Navigation Enhancements
+   ============================================ */
+
+.md-nav__link:hover {
+  color: var(--loups-cyan);
+}
+
+.md-nav__link--active {
+  color: var(--loups-cyan);
+  border-left: 3px solid var(--loups-cyan);
+  padding-left: 1rem;
+}
+
+/* ============================================
+   Table Enhancements
+   ============================================ */
+
+.md-typeset table:not([class]) thead {
+  background: linear-gradient(90deg, rgba(0, 255, 255, 0.1), rgba(0, 184, 212, 0.1));
+}
+
+.md-typeset table:not([class]) tr:hover {
+  background: rgba(0, 255, 255, 0.05);
+}
+
+/* ============================================
+   Hero Section
+   ============================================ */
+
+.hero {
+  text-align: center;
+  padding: 4rem 2rem;
+  margin-bottom: 2rem;
+}
+
+.hero h1 {
+  font-size: 4.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--loups-gradient-start), var(--loups-gradient-end));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+  line-height: 1.1;
+}
+
+.hero .subtitle {
+  font-size: 1.8rem;
+  color: var(--md-default-fg-color--light);
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.hero .tagline {
+  font-size: 1.2rem;
+  color: var(--md-default-fg-color--lighter);
+  font-weight: 600;
+  margin-bottom: 2rem;
+}
+
+.hero-icon {
+  font-size: 5rem;
+  margin-bottom: 1.5rem;
+  display: inline-block;
+}
+
+/* Split Hero Layout */
+.hero-split {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  padding: 4rem 2rem;
+  margin: 0 auto;
+  max-width: 1400px;
+}
+
+.hero-split .hero-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-split .hero-media {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.hero-split h1 {
+  font-size: 4.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  line-height: 1.1;
+}
+
+.hero-split h1 .md-icon {
+  vertical-align: middle;
+  margin-right: 0.5rem;
+}
+
+.hero-split .subtitle {
+  font-size: 1.8rem;
+  color: var(--md-default-fg-color--light);
+  margin-bottom: 1rem;
+  line-height: 1.4;
+}
+
+.hero-split .tagline {
+  font-size: 1.2rem;
+  color: var(--md-default-fg-color--lighter);
+  font-weight: 600;
+  margin-bottom: 2rem;
+}
+
+.hero-split .cta-buttons {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+.hero-split .hero-media img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 255, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.hero-split .hero-media img:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 48px rgba(0, 255, 255, 0.5);
+}
+
+/* ============================================
+   Button Enhancements
+   ============================================ */
+
+.md-button {
+  transition: all 0.3s ease;
+}
+
+.md-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--loups-cyan-glow);
+}
+
+.md-button--primary {
+  background: linear-gradient(135deg, var(--loups-gradient-start), var(--loups-gradient-end));
+  border: none;
+  color: #000;
+  font-weight: bold;
+}
+
+.md-button--primary:hover {
+  background: var(--loups-cyan);
+  color: #000;
+}
+
+/* ============================================
+   Badge Styling
+   ============================================ */
+
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0.25rem;
+}
+
+.badge-cyan {
+  background: var(--loups-cyan);
+  color: #000;
+}
+
+.badge-success {
+  background: #66bb6a;
+  color: #000;
+}
+
+.badge-warning {
+  background: #ffa726;
+  color: #000;
+}
+
+/* ============================================
+   Mermaid Diagram Enhancements
+   ============================================ */
+
+.mermaid {
+  text-align: center;
+  margin: 2rem 0;
+}
+
+/* Override Mermaid default colors to match theme */
+.mermaid .node rect,
+.mermaid .node circle,
+.mermaid .node polygon {
+  stroke: var(--loups-cyan) !important;
+  stroke-width: 2px !important;
+}
+
+.mermaid .edgeLabel {
+  background-color: var(--md-code-bg-color) !important;
+  color: var(--md-default-fg-color) !important;
+}
+
+/* ============================================
+   Search Enhancements
+   ============================================ */
+
+.md-search__input {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  transition: all 0.3s ease;
+}
+
+.md-search__input:focus {
+  border-color: var(--loups-cyan);
+  box-shadow: 0 0 0 2px var(--loups-cyan-glow);
+}
+
+/* ============================================
+   Link Enhancements
+   ============================================ */
+
+.md-typeset a {
+  color: var(--loups-cyan);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.md-typeset a:hover {
+  color: var(--loups-cyan-dark);
+  text-decoration: underline;
+  text-shadow: 0 0 8px var(--loups-cyan-glow);
+}
+
+/* ============================================
+   Scrollbar Styling (Webkit)
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--md-default-bg-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--loups-cyan);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--loups-cyan-dark);
+}
+
+/* ============================================
+   Responsive Adjustments
+   ============================================ */
+
+@media screen and (max-width: 768px) {
+  .hero {
+    padding: 2rem 1rem;
+  }
+
+  .hero h1 {
+    font-size: 2.5rem;
+  }
+
+  .hero .subtitle {
+    font-size: 1.3rem;
+  }
+
+  .hero .tagline {
+    font-size: 1rem;
+  }
+
+  .hero .cta-buttons {
+    flex-direction: column !important;
+    width: 100%;
+  }
+
+  .hero .cta-buttons .md-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Split Hero Responsive */
+  .hero-split {
+    flex-direction: column;
+    padding: 2rem 1rem;
+    gap: 2rem;
+  }
+
+  .hero-split h1 {
+    font-size: 2.5rem;
+  }
+
+  .hero-split .subtitle {
+    font-size: 1.3rem;
+  }
+
+  .hero-split .tagline {
+    font-size: 1rem;
+  }
+
+  .hero-split .cta-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .hero-split .cta-buttons .md-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .icon-xl {
+    font-size: 1.5em;
+  }
+
+  .icon-2xl {
+    font-size: 2em;
+  }
+
+  .icon-3xl {
+    font-size: 2.5em;
+  }
+}
+
+/* ============================================
+   Print Styles
+   ============================================ */
+
+@media print {
+  .icon-pulse,
+  .icon-spin,
+  .icon-bounce,
+  .icon-glow {
+    animation: none !important;
+  }
+}

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="400" height="120" viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Wordmark with magnifying glass as O -->
+  <defs>
+    <style>
+      .wordmark-text {
+        font-family: 'Arial', 'Helvetica', sans-serif;
+        font-weight: 700;
+        font-size: 72px;
+        fill: #00ffff;
+      }
+      .magnifying-glass {
+        stroke: #00ffff;
+        fill: none;
+        stroke-width: 6;
+        stroke-linecap: round;
+      }
+      .scan-lines {
+        stroke: #00ffff;
+        stroke-width: 2;
+        opacity: 0.6;
+      }
+    </style>
+  </defs>
+
+  <!-- Text: L -->
+  <text x="20" y="80" class="wordmark-text">L</text>
+
+  <!-- Magnifying glass as O -->
+  <g transform="translate(110, 40)">
+    <!-- Lens circle -->
+    <circle cx="0" cy="0" r="28" class="magnifying-glass"/>
+    <!-- Handle -->
+    <line x1="20" y1="20" x2="35" y2="35" class="magnifying-glass" stroke-width="8"/>
+    <!-- Small text inside lens to suggest OCR -->
+    <text x="-12" y="-5" style="font-size: 16px; fill: #00ffff; font-weight: 600;">A</text>
+    <text x="-8" y="10" style="font-size: 12px; fill: #00ffff; font-weight: 600;">B</text>
+  </g>
+
+  <!-- Text: UPS -->
+  <text x="165" y="80" class="wordmark-text">UPS</text>
+
+  <!-- Scan lines underneath -->
+  <g class="scan-lines">
+    <line x1="20" y1="95" x2="95" y2="95"/>
+    <line x1="110" y1="95" x2="150" y2="95"/>
+    <line x1="165" y1="95" x2="380" y2="95"/>
+  </g>
+</svg>
