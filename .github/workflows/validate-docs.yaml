@@ -1,0 +1,39 @@
+---
+name: Validate Documentation
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Validate docs build on all PRs and pushes
+  validate:
+    name: Validate Documentation Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build nix environment
+        uses: ./.github/actions/build-nix-environment
+        with:
+          github-access-token: ${{ secrets.ACCESS_PUBLIC_RO }}
+
+      - name: Build documentation (strict mode)
+        run: |
+          devenv shell mkdocs build --strict
+        working-directory: ${{ github.workspace }}
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: site/
+          retention-days: 7
