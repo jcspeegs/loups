@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Icon only - for favicon and app icon -->
+  <defs>
+    <style>
+      .icon-outline {
+        stroke: #00ffff;
+        fill: none;
+        stroke-width: 4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .icon-fill {
+        fill: #00ffff;
+      }
+      .text-in-lens {
+        font-family: 'Courier New', monospace;
+        font-weight: 700;
+        fill: #00ffff;
+      }
+      .background {
+        fill: #000000;
+      }
+    </style>
+  </defs>
+
+  <!-- Optional background for dark theme -->
+  <!-- <rect width="100" height="100" class="background" rx="15"/> -->
+
+  <!-- Magnifying glass centered -->
+  <g transform="translate(50, 50)">
+    <!-- Outer circle (lens) -->
+    <circle cx="0" cy="0" r="32" class="icon-outline" stroke-width="5"/>
+
+    <!-- Inner content - OCR text characters -->
+    <text x="-16" y="-7" class="text-in-lens" style="font-size: 18px;">A</text>
+    <text x="2" y="-7" class="text-in-lens" style="font-size: 18px;">B</text>
+    <text x="-16" y="11" class="text-in-lens" style="font-size: 15px;">1</text>
+    <text x="-2" y="11" class="text-in-lens" style="font-size: 15px;">2</text>
+    <text x="10" y="11" class="text-in-lens" style="font-size: 15px;">3</text>
+
+    <!-- Handle -->
+    <line x1="23" y1="23" x2="38" y2="38" class="icon-outline" stroke-width="7"/>
+    <circle cx="38" cy="38" r="5" class="icon-fill"/>
+  </g>
+</svg>

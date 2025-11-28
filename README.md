@@ -9,10 +9,11 @@ Originally designed for Lights Out HB fastpitch softball games, but works with a
 [![PyPI version](https://img.shields.io/pypi/v/loups.svg)](https://pypi.org/project/loups/)
 [![Python 3.13+](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
 [![GitHub Actions](https://github.com/jcspeegs/loups/actions/workflows/test.yaml/badge.svg)](https://github.com/jcspeegs/loups/actions/workflows/test.yaml)
+[![Documentation](https://img.shields.io/badge/docs-mkdocs-00ffff.svg)](https://jcspeegs.github.io/loups/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Downloads](https://img.shields.io/pypi/dm/loups.svg)](https://pypi.org/project/loups/)
 
-**Links:** [Repository](https://github.com/jcspeegs/loups) • [Issues](https://github.com/jcspeegs/loups/issues) • [PyPI](https://pypi.org/project/loups/) • [Author](mailto:justin@speegs.com)
+**Links:** [Repository](https://github.com/jcspeegs/loups) • [Documentation](https://jcspeegs.github.io/loups/) • [Issues](https://github.com/jcspeegs/loups/issues) • [PyPI](https://pypi.org/project/loups/) • [Author](mailto:justin@speegs.com)
 
 ## ✨ What is Loups?
 

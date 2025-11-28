@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="280" height="100" viewBox="0 0 280 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Combined Mark: Icon + Wordmark -->
+  <defs>
+    <style>
+      .logo-text {
+        font-family: 'Arial', 'Helvetica', sans-serif;
+        font-weight: 700;
+        font-size: 48px;
+        fill: #00ffff;
+      }
+      .icon-outline {
+        stroke: #00ffff;
+        fill: none;
+        stroke-width: 4;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .icon-fill {
+        fill: #00ffff;
+      }
+      .text-in-lens {
+        font-family: 'Courier New', monospace;
+        font-weight: 700;
+        fill: #00ffff;
+      }
+    </style>
+  </defs>
+
+  <!-- Icon: Magnifying glass with OCR text -->
+  <g transform="translate(50, 50)">
+    <!-- Outer circle (lens) -->
+    <circle cx="0" cy="0" r="35" class="icon-outline"/>
+
+    <!-- Inner content - OCR text characters -->
+    <text x="-18" y="-8" class="text-in-lens" style="font-size: 20px;">A</text>
+    <text x="2" y="-8" class="text-in-lens" style="font-size: 20px;">B</text>
+    <text x="-18" y="12" class="text-in-lens" style="font-size: 16px;">1</text>
+    <text x="-2" y="12" class="text-in-lens" style="font-size: 16px;">2</text>
+    <text x="12" y="12" class="text-in-lens" style="font-size: 16px;">3</text>
+
+    <!-- Handle -->
+    <line x1="25" y1="25" x2="42" y2="42" class="icon-outline" stroke-width="6"/>
+    <circle cx="42" cy="42" r="4" class="icon-fill"/>
+  </g>
+
+  <!-- Wordmark: LOUPS -->
+  <text x="105" y="65" class="logo-text">LOUPS</text>
+
+  <!-- Subtle tagline (optional, can be removed) -->
+  <text x="107" y="82" style="font-size: 10px; fill: #00ffff; opacity: 0.7; font-family: Arial;">
+    Video Chapter Scanner
+  </text>
+</svg>
