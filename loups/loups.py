@@ -29,10 +29,12 @@ Example:
 import logging
 import re
 from datetime import timedelta
-from typing import NamedTuple
+from pathlib import Path
+from typing import Callable, NamedTuple, Optional, Union
 
 import cv2 as cv
 import easyocr
+import numpy as np
 
 from .geometry import Point, Size
 from .match_template_scan import MatchTemplateScan
@@ -196,14 +198,14 @@ class Loups:
 
     def __init__(
         self,
-        scannable,
-        template,
-        method="TM_CCOEFF_NORMED",
-        threshold=None,
-        resolution=3,
-        on_batter_found=None,
-        on_progress=None,
-    ):
+        scannable: Union[str, Path],
+        template: Union[str, Path],
+        method: str = "TM_CCOEFF_NORMED",
+        threshold: Optional[float] = None,
+        resolution: int = 3,
+        on_batter_found: Optional[Callable[[FrameBatterInfo], None]] = None,
+        on_progress: Optional[Callable[[int, int], None]] = None,
+    ) -> None:
         """Initialize Loups video scanner.
 
         Args:
@@ -246,7 +248,7 @@ class Loups:
         self.on_progress = on_progress
 
     @property
-    def method(self):
+    def method(self) -> str:
         """Get the template matching method name.
 
         Returns:
@@ -255,7 +257,7 @@ class Loups:
         return self._method
 
     @property
-    def scannable(self):
+    def scannable(self) -> Union[str, Path]:
         """Get the path to the video file being scanned.
 
         Returns:
@@ -264,7 +266,7 @@ class Loups:
         return self._scannable
 
     @property
-    def capture(self):
+    def capture(self) -> cv.VideoCapture:
         """Get the OpenCV VideoCapture object.
 
         Returns:
@@ -273,7 +275,7 @@ class Loups:
         return self._capture
 
     @property
-    def total_frames(self):
+    def total_frames(self) -> float:
         """Get total number of frames in the video.
 
         Returns:
@@ -282,7 +284,7 @@ class Loups:
         return self.capture.get(cv.CAP_PROP_FRAME_COUNT)
 
     @property
-    def frame_rate(self):
+    def frame_rate(self) -> float:
         """Get the frame rate of the video.
 
         Returns:
@@ -291,7 +293,7 @@ class Loups:
         return self._frame_rate
 
     @property
-    def template(self):
+    def template(self) -> np.ndarray:
         """Get the template image as a numpy array.
 
         Returns:
@@ -309,7 +311,7 @@ class Loups:
         self._template = cv.imread(value, cv.IMREAD_GRAYSCALE)
 
     @classmethod
-    def get_reader(cls):
+    def get_reader(cls) -> easyocr.Reader:
         """Get or initialize the shared EasyOCR reader.
 
         Lazy initialization pattern to avoid loading OCR models until needed.
@@ -350,7 +352,7 @@ class Loups:
 
         return calculate_frame_frequency(self.frame_rate, self.resolution)
 
-    def timestamp(self):
+    def timestamp(self) -> float:
         """Get current video position timestamp.
 
         Returns:
@@ -371,7 +373,9 @@ class Loups:
         )
         return scan
 
-    def new_batter(self, res, ms, threshold: int = 2000) -> bool:
+    def new_batter(
+        self, res: list[FrameBatterInfo], ms: float, threshold: int = 2000
+    ) -> bool:
         """Determine if a frame contains a new batter.
 
         Args:
@@ -397,7 +401,9 @@ class Loups:
             else new_batter_frame
         )
 
-    def prev_batter_frame_timestamp(self, frames) -> int:
+    def prev_batter_frame_timestamp(
+        self, frames: list[FrameBatterInfo]
+    ) -> Optional[int]:
         """Get timestamp of the most recent frame containing a batter.
 
         Args:
@@ -535,7 +541,7 @@ class Loups:
     # # cropped_frame = frame[y_start:y_end, x_start:x_end]
     # return self.frame
 
-    def scan(self):
+    def scan(self) -> "Loups":
         """Scan the video file to detect batters and extract information.
 
         Process video frames at the specified resolution, perform template matching,
