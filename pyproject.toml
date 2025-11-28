@@ -1,6 +1,6 @@
 [project]
 name = "loups"
-version = "0.1.1.rc1"
+version = "0.1.1"
 description = "Automated video chapter generation using template matching and OCR"
 readme = "README.md"
 license = "MIT"
